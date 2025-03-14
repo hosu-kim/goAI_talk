@@ -1,140 +1,149 @@
 import os
+import logging
+from datetime import datetime
 from openai import OpenAI
 from dotenv import load_dotenv
+from llm.response_cache import ResponseCache
+from utils.config import load_config, setup_logger
 
 load_dotenv()
 
 class QnAEngine:
-	"""
-		QnA Engine for processing football-related questions using LLM.
-		This class handles the integration with OpenAI's API to generate
-		natural language response based on provided match data.
-		
-	"""
-	def __init__(self):
-		"""
-		Initialize the QnA Engine with OpenAI client.
-		Sets up the API connection using the API key from environment variables.
-		"""
-		api_key=os.getenv("OPENAI_API_KEY")
-		if not api_key:
-			raise ValueError("OPENAI_API_KEY not found in environment variables")
+    """
+    QnA Engine for processing football-related questions using LLM.
+    This class handles the integration with OpenAI's API to generate
+    natural language response based on provided match data.
+    """
+    def __init__(self):
+        """Initialize and set up API connection"""
+        # Load configuration
+        self.config = load_config()
+        self.logger = setup_logger("football_qa")
+        
+        # Set up API key
+        self.api_key = self.config["openai_api_key"]
+        if not self.api_key:
+            raise ValueError("OPENAI_API_KEY not found in environment variables")
+        
+        # Set up model
+        self.model = self.config["openai_model"]
+        
+        # Initialize caching system
+        self.cache = ResponseCache()
+        
+        self.logger.info("QnAEngine initialized by %s at %s",
+                        os.getenv("USER", "unknown_user"),
+                        self._get_current_time())
 
-		os.environ["OPENAI_API_KEY"] = api_key
-		self.client = None
+    def _get_current_time(self):
+        """Format the current time"""
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-	def get_answer(self, question, matches):
-		"""
-		Generate an answer for a football-related question based on match data.
-		
-		Args:
-			question (str): User's question about football matches
-			matches (list): List of match data objects containing game information
+    def get_answer(self, question, matches):
+        """
+        Generate an answer to a user question
+        
+        Args:
+            question (str): User question
+            matches (list): List of match data
+            
+        Returns:
+            str: Generated answer
+        """
+        self.logger.info("Processing question: %s", question)
+        
+        # Check cache
+        cached_response = self.cache.get(question, matches)
+        if cached_response:
+            self.logger.info("Using cached response")
+            return cached_response
+        
+        try:
+            # Prepare match data
+            match_context = self._prepare_match_context(matches)
+            
+            # Initialize API client
+            client = OpenAI(api_key=self.api_key)
+            
+            # Create prompt
+            prompt = self._create_prompt(question, match_context)
+            
+            # Call API
+            self.logger.debug("Calling OpenAI API with model: %s", self.model)
+            response = client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "You are a helpful football match results assistant. You provide accurate information about football matches based on the provided data. Do not make up information not present in the data."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=800
+            )
+            
+            # Extract and return response
+            answer = response.choices[0].message.content.strip()
+            self.logger.info("Generated answer (length: %d characters)", len(answer))
+            
+            # Save to cache
+            self.cache.set(question, matches, answer)
+            
+            return answer
+            
+        except Exception as e:
+            self.logger.error("Error generating answer: %s", str(e), exc_info=True)
+            return f"Sorry, an error occurred while answering your question: {str(e)}"
+    
+    def _prepare_match_context(self, matches):
+        """
+        Convert match data into context information
+        
+        Args:
+            matches (list): List of match data
+            
+        Returns:
+            str: Context information string
+        """
+        context = "Yesterday's football match results:\n\n"
+        
+        # Add information for each match
+        for i, match in enumerate(matches, 1):
+            home = match.get("home_team", "Unknown")
+            away = match.get("away_team", "Unknown")
+            home_score = match.get("home_score", 0)
+            away_score = match.get("away_score", 0)
+            league = match.get("league", "Unknown League")
+            
+            context += f"{i}. [{league}] {home} {home_score} - {away_score} {away}\n"
+            
+            # Add goal information
+            goals = match.get("goals", [])
+            if goals:
+                context += "   Goal details:\n"
+                for goal in goals:
+                    player = goal.get("player", "Unknown")
+                    team = goal.get("team", "Unknown")
+                    minute = goal.get("minute", 0)
+                    context += f"   - {minute}min: {player} ({team})\n"
+                    
+            context += "\n"
+        
+        return context
+        
+    def _create_prompt(self, question, match_context):
+        """
+        Create a prompt for API request
+        
+        Args:
+            question (str): User question
+            match_context (str): Match data context
+            
+        Returns:
+            str: Complete prompt
+        """
+        return f"""Please answer the following question based on the football match data provided:
 
-		Returns:
-			str: LLM-generated response to the user's question
-		"""
-		try:
-			from openai import OpenAI
-			client = OpenAI()
+{match_context}
 
-			matches_data = self._format_matches_data(matches)
-			prompt = f"""
-			You are an AI assistant answering questions about recent football match results.
-			Please provide accurate answers based on the football match data provided below. ;)
+Question: {question}
 
-			Yesterday's football match data:
-			{matches_data}
-
-			Question: {question}
-
-			Guidelines:
-			1. Only use information from the provided data.
-			2. If information is not in the data, state that you don't know.
-			3. Use precise team names, player names, and scores.
-			4. Answer in the same language as the question.
-			"""
-
-			response = client.chat.completions.create(
-				model="gpt-4",
-				messages=[
-					{"role": "system", "content": "You are a helpful football results assistant."},
-					{"role": "user", "content": prompt}
-				]
-			)
-
-			return response.choices[0].message.content
-		
-		except Exception as e:
-			print(f"Error getting answer from LLM: {e}")
-			return "Sorry, an error occurred while answering your question."
-		
-	def _format_matches_data(self, matches):
-		"""
-		Format match data into a structured string for LLM processing.
-		
-		Args:
-			matches (list): List of match data objects
-			
-		Returns:
-			str: Formatted string representation of match data
-		"""
-		formatted_data = []
-
-		for match in matches:
-			match_info = f"""
-			Match: {match["home_team"]} vs {match["away_team"]}
-			Score: {match["home_score"]} - {match["away_score"]}
-			Time: {match["match_time"]}
-			League: {match["league"]}
-			Venue: {match["venue"]}
-
-			Goals:
-			{self._format_goals(match["goals"])}
-
-			Key Events:
-			{self._format_events(match["events"])}
-			"""
-			formatted_data.append(match_info)
-
-		return "\n---\n".join(formatted_data)
-
-	def _format_goals(self, goals):
-		"""
-		Format goal information into a readable string.
-		
-		Args:
-			goals (list): List of goal events
-			
-		Returns:
-			str: Formatted string of goal information
-		"""
-		if not goals:
-			return "No goals"
-		
-		goal_strings = []
-		for goal in goals:
-			goal_str = f"- {goal['minute']}: {goal['player']} ({goal['team']}) {goal['type']}"
-			goal_strings.append(goal_str)
-
-		return "\n".join(goal_strings)
-	
-	def _format_events(self, events):
-		"""
-		Format match events (cards, substitutions, etc.) into a readable string.
-		
-		Args:
-			events (list): List of match events
-		
-		Returns:
-			str: Formatted string of match events
-		"""
-		if not events:
-			return "No significant events"
-		
-		event_strings = []
-		for event in events:
-			event_str = f"- {event.get('minute')}': {event.get('type')} - {event.get('player')} ({event.get('team')})"
-			event_strings.append(event_str)
-
-		return "\n".join(event_strings)
+Please provide your answer in Korean. Do not speculate on information not included in the data and clearly state if the information is not available."""

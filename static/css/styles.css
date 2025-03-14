@@ -1,0 +1,92 @@
+/* Football Matches Q&A Bot 스타일시트 */
+:root {
+  --primary-color: #28a745; /* 메인 색상 (녹색) */
+  --secondary-color: #007bff; /* 보조 색상 (파란색) */
+  --text-color: #333;
+  --background-color: #f8f9fa;
+  --card-border: #dee2e6;
+}
+
+body {
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--text-color);
+  background-color: var(--background-color);
+  line-height: 1.6;
+}
+
+.navbar-brand {
+  font-weight: bold;
+}
+
+.app-header {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 2rem 0;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.app-title {
+  font-weight: 700;
+  font-size: 2.2rem;
+}
+
+.match-card {
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  transition: all 0.2s ease;
+}
+
+.match-card:hover {
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  transform: translateY(-3px);
+}
+
+.score {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+.team-name {
+  font-weight: 500;
+}
+
+.question-form {
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  margin-bottom: 2rem;
+}
+
+.answer-container {
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border-left: 5px solid var(--secondary-color);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  margin-top: 2rem;
+}
+
+.league-badge {
+  background-color: var(--primary-color);
+  color: white;
+  font-size: 0.8rem;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.goal-details {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+footer {
+  color: #6c757d;
+  padding: 1rem 0;
+  font-size: 0.9rem;
+}

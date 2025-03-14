@@ -15,7 +15,7 @@ python-dotenv==1.0.0
 # Handles natural language Q&A using GPT models
 # 1.13.5: New API structure, improved streaming responses, latest GPT-4.5 support
 # Note: Requires code changes when upgrading from v0.x to v1.x
-openai==1.23.0
+openai==1.66.3
 
 # Data Analysis Framework
 # Used for structured data processing and anlysis of match data
