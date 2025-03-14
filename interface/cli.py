@@ -1,3 +1,26 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+          ___
+      .:::---:::.
+    .'--:     :--'.                      ___     ____   ______        __ __  
+   /.'   \   /   `.\      ____ _ ____   /   |   /  _/  /_  __/____ _ / // /__
+  | /'._ /:::\ _.'\ |    / __ `// __ \ / /| |   / /     / /  / __ `// // //_/
+  |/    |:::::|    \|   / /_/ // /_/ // ___ | _/ /     / /  / /_/ // // ,<   
+  |:\ .''-:::-''. /:|   \__, / \____//_/  |_|/___/    /_/   \__,_//_//_/|_|  
+   \:|    `|`    |:/   /____/                                                
+    '.'._.:::._.'.'
+      '-:::::::-'
+
+goAI_talk - Football Match Results Q&A Bot
+File: interface/cli.py
+Author: hosu-kim
+Created: 2025-03-14 10:24:15 UTC
+
+Description:
+    This module provides the command line interface for the Football Q&A system.
+    It handles user input, displays match information, and manages the interaction loop.
+"""
 import argparse
 import sys
 import time

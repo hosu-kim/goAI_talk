@@ -1,3 +1,26 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+          ___
+      .:::---:::.
+    .'--:     :--'.                      ___     ____   ______        __ __  
+   /.'   \   /   `.\      ____ _ ____   /   |   /  _/  /_  __/____ _ / // /__
+  | /'._ /:::\ _.'\ |    / __ `// __ \ / /| |   / /     / /  / __ `// // //_/
+  |/    |:::::|    \|   / /_/ // /_/ // ___ | _/ /     / /  / /_/ // // ,<   
+  |:\ .''-:::-''. /:|   \__, / \____//_/  |_|/___/    /_/   \__,_//_//_/|_|  
+   \:|    `|`    |:/   /____/                                                
+    '.'._.:::._.'.'
+      '-:::::::-'
+
+goAI_talk - Football Match Results Q&A Bot
+File: database/database_manager.py
+Author: hosu-kim
+Created: 2025-03-14 10:45:18 UTC
+
+Description:
+    This module provides database management functionality.
+    It handles storing and retrieving football match data from SQLite database.
+"""
 import sqlite3
 import os
 import logging
@@ -288,4 +311,3 @@ class DBManager:
 			return None
 		finally:
 			conn.close()
-			

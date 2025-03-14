@@ -1,3 +1,26 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+          ___
+      .:::---:::.
+    .'--:     :--'.                      ___     ____   ______        __ __  
+   /.'   \   /   `.\      ____ _ ____   /   |   /  _/  /_  __/____ _ / // /__
+  | /'._ /:::\ _.'\ |    / __ `// __ \ / /| |   / /     / /  / __ `// // //_/
+  |/    |:::::|    \|   / /_/ // /_/ // ___ | _/ /     / /  / /_/ // // ,<   
+  |:\ .''-:::-''. /:|   \__, / \____//_/  |_|/___/    /_/   \__,_//_//_/|_|  
+   \:|    `|`    |:/   /____/                                                
+    '.'._.:::._.'.'
+      '-:::::::-'
+
+goAI_talk - Football Match Results Q&A Bot
+File: llm/response_cache.py
+Author: hosu-kim
+Created: 2025-03-14 12:10:22 UTC
+
+Description:
+    This module provides caching functionality for LLM responses.
+    It reduces API calls by caching responses based on questions and data hashes.
+"""
 import hashlib
 import os
 import json

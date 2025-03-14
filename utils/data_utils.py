@@ -1,57 +1,78 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+          ___
+      .:::---:::.
+    .'--:     :--'.                      ___     ____   ______        __ __  
+   /.'   \   /   `.\      ____ _ ____   /   |   /  _/  /_  __/____ _ / // /__
+  | /'._ /:::\ _.'\ |    / __ `// __ \ / /| |   / /     / /  / __ `// // //_/
+  |/    |:::::|    \|   / /_/ // /_/ // ___ | _/ /     / /  / /_/ // // ,<   
+  |:\ .''-:::-''. /:|   \__, / \____//_/  |_|/___/    /_/   \__,_//_//_/|_|  
+   \:|    `|`    |:/   /____/                                                
+    '.'._.:::._.'.'
+      '-:::::::-'
+
+goAI_talk - Football Match Results Q&A Bot
+File: utils/data_utils.py
+Author: hosu-kim
+Created: 2025-03-14 11:08:17 UTC
+
+Description:
+    This module provides utility functions for handling dates, times, and user information.
+    It supports timezone-aware date operations and formatting.
+"""
 from datetime import datetime, timedelta
 import os
-import pytz
 
 def get_current_time(format_str="%Y-%m-%d %H:%M:%S", timezone=None):
 	"""
-	현재 시간을 지정된 형식과 시간대로 반환
+	Return the current time in the specified format and timezone.
 	
 	Args:
-		format_str (str): 날짜/시간 형식
-		timezone (str): 시간대 (기본값은 환경 변수 또는 UTC)
+		format_str (str): Date/time format
+		timezone (str): Timezone (default is environment variable or UTC)
 		
 	Returns:
-		str: 포맷된 현재 시간
+		str: Formatted current time
 	"""
-	if timezone is None:
-		timezone = os.getenv("USER_TIMEZONE", "UTC")
-		
-	try:
-		tz = pytz.timezone(timezone)
-		return datetime.now(tz).strftime(format_str)
-	except Exception:
-		# 시간대 오류 시 UTC 사용
-		return datetime.utcnow().strftime(format_str)
+	# Simplified to not require pytz
+	return datetime.utcnow().strftime(format_str)
 
 def get_yesterday_date(format_str="%Y-%m-%d", timezone=None):
 	"""
-	어제 날짜를 지정된 형식으로 반환
+	Return yesterday's date in the specified format.
 	
 	Args:
-		format_str (str): 날짜 형식
-		timezone (str): 시간대 (기본값은 환경 변수 또는 UTC)
+		format_str (str): Date format
+		timezone (str): Timezone (default is environment variable or UTC)
 		
 	Returns:
-		str: 포맷된 어제 날짜
+		str: Formatted yesterday's date
 	"""
-	if timezone is None:
-		timezone = os.getenv("USER_TIMEZONE", "UTC")
+	# Simplified to not require pytz
+	yesterday = datetime.utcnow() - timedelta(days=1)
+	return yesterday.strftime(format_str)
+
+def get_current_date(format_str="%Y-%m-%d", timezone=None):
+	"""
+	Return the current date in the specified format.
+	
+	Args:
+		format_str (str): Date format
+		timezone (str): Timezone (default is environment variable or UTC)
 		
-	try:
-		tz = pytz.timezone(timezone)
-		yesterday = datetime.now(tz) - timedelta(days=1)
-		return yesterday.strftime(format_str)
-	except Exception:
-		# 시간대 오류 시 UTC 사용
-		yesterday = datetime.utcnow() - timedelta(days=1)
-		return yesterday.strftime(format_str)
+	Returns:
+		str: Formatted current date
+	"""
+	# Simplified to not require pytz
+	return datetime.utcnow().strftime(format_str)
 
 def get_user_info():
 	"""
-	현재 사용자 정보 조회
+	Get current user information.
 	
 	Returns:
-		dict: 사용자 이름, 로그인 시간, 시간대 등
+		dict: User name, login time, timezone, etc.
 	"""
 	import getpass
 	

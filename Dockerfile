@@ -1,33 +1,20 @@
-# Use official Python image as base
-FROM python:3.9-slim
+# Use official Node image as base
+FROM node:18
 
-# Set workingirectory in the container
+# Set working directory in the container
 WORKDIR /app
 
-# Copy requirements file
-COPY requirements.txt .
+# Copy package.json and package-lock.json files
+COPY package*.json ./
 
 # Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN npm install
 
 # Copy the entire project
 COPY . .
 
-# Create a non-root user for security and set permissions
-RUN adduser --disabled-password --gecos "" appuser && \
-	mkdir -p /app/database && \
-	chown -R appuser:appuser /app
-
-# Switch to non-root user
-USER appuser
-
-# Set environment variables
-ENV PYTHONUNBUFFERED=1 \
-	PYTHONDONTWRITEBYTECODE=1
-
 # Expose port for web interface
-EXPOSE 8000
+EXPOSE 3000
 
 # Run the application
-CMD ["python", "main.py"]
-# CMD ["uvicorn", "interface.web:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["npm", "start"]

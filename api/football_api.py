@@ -21,6 +21,7 @@ Description:
     This module provides the FootballAPI class to interact with the football data API,
     fetching matches, goals, and related information.
 """
+
 import requests
 import datetime
 import concurrent.futures

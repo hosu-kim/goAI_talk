@@ -1,48 +1,29 @@
 # GooooooAI Talk - Football Match Q&A bot
 # Last Updated: 2025-03-13
 
-#HTTP Requests Library
+# HTTP Requests Library
 # Used to fetch football match data from API-Football
-# 2.32.1: HTTP/3 support, performance optimization, sucurity improvements
 requests==2.32.1
 
 # Environment Variables Manager
 # Loads sensitive information like API keys from .env files
-# 1.1.2: Enhanced environment loading methods, imporved type hints
 python-dotenv==1.0.0
 
 # OpenAI API Client
 # Handles natural language Q&A using GPT models
-# 1.13.5: New API structure, improved streaming responses, latest GPT-4.5 support
-# Note: Requires code changes when upgrading from v0.x to v1.x
-openai==1.66.3
-
-# Data Analysis Framework
-# Used for structured data processing and anlysis of match data
-# 2.2.1: PyArrow-based processing, memory usage optimization
-pandas==2.2.1
+openai>=1.0.0,<2.0.0
 
 # Terminal UI enhancement
 # Provides beautiful console output for CLI interface
-# 13.7.0: More styling options, improved console rendering performance
 rich==13.7.0
 
-# Asynchronous Web Framework
+# Web Framework
 # Implements web interface API endpoints
-# 0.109.2: Enhanced WebSocket support, OpenAPI 3.1 compatibility
-fastapi==0.109.2
-
-# ASGI Server
-# Required to run FastAPI applications
-# 0.27.1: Improved async processing performance, enhanced logging capabilities
-uvicorn==0.27.1
-
-# Form Data Processing
-# Handles HTML form data in FastAPI
-# 0.0.7: Bug fixes and improved file upload handling
-python-multipart==0.0.7
+flask==2.0.1
 
 # HTML Template Engine
 # Renders HTML pages for web interface
-# 3.1.3: Security enhancements, improved template loading performance
 jinja2==3.1.3
+
+# JSON handling library
+jsonlib==1.6.1

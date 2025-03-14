@@ -16,4 +16,25 @@ venv/
 .venv/
 
 # Database files
-*db
+*.db
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
+# Cache
+cache/
+__pycache__/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 중복 컴포넌트 디렉토리 (components는 interface/components로 통합)
+/components/

@@ -1,10 +1,33 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+          ___
+      .:::---:::.
+    .'--:     :--'.                      ___     ____   ______        __ __  
+   /.'   \   /   `.\      ____ _ ____   /   |   /  _/  /_  __/____ _ / // /__
+  | /'._ /:::\ _.'\ |    / __ `// __ \ / /| |   / /     / /  / __ `// // //_/
+  |/    |:::::|    \|   / /_/ // /_/ // ___ | _/ /     / /  / /_/ // // ,<   
+  |:\ .''-:::-''. /:|   \__, / \____//_/  |_|/___/    /_/   \__,_//_//_/|_|  
+   \:|    `|`    |:/   /____/                                                
+    '.'._.:::._.'.'
+      '-:::::::-'
+
+goAI_talk - Football Match Results Q&A Bot
+File: llm/qna_engine.py
+Author: hosu-kim
+Created: 2025-03-14 11:30:15 UTC
+
+Description:
+    This module provides the QnA engine for natural language queries about football matches.
+    It integrates with the OpenAI API to generate responses based on match data.
+"""
 import os
 import logging
 from datetime import datetime
 from openai import OpenAI
 from dotenv import load_dotenv
 from llm.response_cache import ResponseCache
-from utils.config import load_config, setup_logger
+from utils.config import load_config, setup_logger, load_additional_config
 
 load_dotenv()
 
@@ -14,11 +37,14 @@ class QnAEngine:
     This class handles the integration with OpenAI's API to generate
     natural language response based on provided match data.
     """
-    def __init__(self):
+    def __init__(self, config_path="config.json"):
         """Initialize and set up API connection"""
         # Load configuration
         self.config = load_config()
         self.logger = setup_logger("football_qa")
+        
+        # Load additional settings from config.json
+        self.additional_config = load_additional_config(config_path)
         
         # Set up API key
         self.api_key = self.config["openai_api_key"]
@@ -27,6 +53,18 @@ class QnAEngine:
         
         # Set up model
         self.model = self.config["openai_model"]
+        
+        # Set configurable parameters with defaults
+        self.temperature = 0.3
+        self.max_tokens = 800
+        
+        # Apply settings from config.json if available
+        if 'api_settings' in self.additional_config and 'openai' in self.additional_config['api_settings']:
+            openai_settings = self.additional_config['api_settings']['openai']
+            if 'temperature' in openai_settings:
+                self.temperature = openai_settings['temperature']
+            if 'max_tokens' in openai_settings:
+                self.max_tokens = openai_settings['max_tokens']
         
         # Initialize caching system
         self.cache = ResponseCache()
@@ -76,8 +114,8 @@ class QnAEngine:
                     {"role": "system", "content": "You are a helpful football match results assistant. You provide accurate information about football matches based on the provided data. Do not make up information not present in the data."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.3,
-                max_tokens=800
+                temperature=self.temperature,
+                max_tokens=self.max_tokens
             )
             
             # Extract and return response
@@ -146,4 +184,4 @@ class QnAEngine:
 
 Question: {question}
 
-Please provide your answer in Korean. Do not speculate on information not included in the data and clearly state if the information is not available."""
+Please provide your answer in English. Do not speculate on information not included in the data and clearly state if the information is not available."""
