@@ -1,0 +1,19 @@
+# Environment variables
+.env
+
+# Git
+.git
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+env/
+venv/
+.venv/
+
+# Database files
+*db
