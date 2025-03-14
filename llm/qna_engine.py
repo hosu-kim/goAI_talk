@@ -28,6 +28,8 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from llm.response_cache import ResponseCache
 from utils.config import load_config, setup_logger, load_additional_config
+from typing import List, Dict, Any, Optional
+from utils.constants import DEFAULT_TEMPERATURE, DEFAULT_MAX_TOKENS, DEFAULT_MODEL
 
 load_dotenv()
 
@@ -37,7 +39,7 @@ class QnAEngine:
     This class handles the integration with OpenAI's API to generate
     natural language response based on provided match data.
     """
-    def __init__(self, config_path="config.json"):
+    def __init__(self, config_path: str = "config.json") -> None:
         """Initialize and set up API connection"""
         # Load configuration
         self.config = load_config()
@@ -52,11 +54,11 @@ class QnAEngine:
             raise ValueError("OPENAI_API_KEY not found in environment variables")
         
         # Set up model
-        self.model = self.config["openai_model"]
+        self.model = DEFAULT_MODEL
         
         # Set configurable parameters with defaults
-        self.temperature = 0.3
-        self.max_tokens = 800
+        self.temperature = DEFAULT_TEMPERATURE
+        self.max_tokens = DEFAULT_MAX_TOKENS
         
         # Apply settings from config.json if available
         if 'api_settings' in self.additional_config and 'openai' in self.additional_config['api_settings']:
@@ -77,17 +79,26 @@ class QnAEngine:
         """Format the current time"""
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    def get_answer(self, question, matches):
+    def get_answer(self, question: str, matches: List[Dict[str, Any]]) -> str:
         """
         Generate an answer to a user question
         
         Args:
-            question (str): User question
-            matches (list): List of match data
+            question: User question text
+            matches: List of match data dictionaries
             
         Returns:
-            str: Generated answer
+            Generated answer text
+            
+        Raises:
+            ValueError: If question is empty or matches list is empty
+            OpenAIError: If API call fails
         """
+        if not question.strip():
+            raise ValueError("Question cannot be empty")
+        if not matches:
+            raise ValueError("No match data provided")
+            
         self.logger.info("Processing question: %s", question)
         
         # Check cache

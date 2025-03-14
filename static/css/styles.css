@@ -460,21 +460,13 @@ ty: 0.9;
   .question-form {
     padding: 1.5rem;
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-}  margin-top: 2rem;.mt-4 {}  margin-bottom: 1.5rem;.mb-3 {}  text-align: center;.text-center {/* Utility classes */}  }    grid-template-columns: 1fr;  
+  
   .match-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Utility classes */
+.text-center { text-align: center; }
+.mb-3 { margin-bottom: 1.5rem; }
+.mt-4 { margin-top: 2rem; }

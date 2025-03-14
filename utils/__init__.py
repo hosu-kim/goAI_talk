@@ -1,1 +1,1 @@
-"""Utils package initialization."""
+# Package initialization file

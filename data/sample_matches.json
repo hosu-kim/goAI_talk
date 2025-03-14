@@ -1,0 +1,64 @@
+{
+  "matches": [
+    {
+      "date": "2024-03-14",
+      "league": "Premier League",
+      "home_team": "Manchester United",
+      "away_team": "Liverpool",
+      "home_score": 2,
+      "away_score": 1,
+      "goals": [
+        {
+          "minute": 23,
+          "player": "Bruno Fernandes",
+          "team": "Manchester United"
+        },
+        {
+          "minute": 45,
+          "player": "Marcus Rashford",
+          "team": "Manchester United"
+        },
+        {
+          "minute": 78,
+          "player": "Mohamed Salah",
+          "team": "Liverpool"
+        }
+      ]
+    },
+    {
+      "date": "2024-03-14", 
+      "league": "La Liga",
+      "home_team": "Barcelona",
+      "away_team": "Real Madrid",
+      "home_score": 3,
+      "away_score": 2,
+      "goals": [
+        {
+          "minute": 15,
+          "player": "Lewandowski",
+          "team": "Barcelona"
+        },
+        {
+          "minute": 35,
+          "player": "Vinicius Jr",
+          "team": "Real Madrid"
+        },
+        {
+          "minute": 55,
+          "player": "Pedri",
+          "team": "Barcelona"
+        },
+        {
+          "minute": 70,
+          "player": "Gavi",
+          "team": "Barcelona"
+        },
+        {
+          "minute": 85,
+          "player": "Bellingham",
+          "team": "Real Madrid"
+        }
+      ]
+    }
+  ]
+}

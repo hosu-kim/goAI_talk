@@ -27,6 +27,7 @@ import datetime
 import concurrent.futures
 from typing import List, Dict, Any, Optional
 from utils.config import setup_logger, load_config
+from rich.console import Console
 
 class FootballAPI:
     """Client for interacting with the football API.
@@ -50,6 +51,9 @@ class FootballAPI:
         self.logger = setup_logger("football_api")
         self.request_count = 0
         self.last_request_time = None
+
+        self.console = Console()
+        self.debug = True  # 디버그 출력 활성화 여부
 
         self.logger.info("FootballAPI initialized")
 
@@ -80,6 +84,9 @@ class FootballAPI:
         else:
             self.request_count += 1
 
+        if self.debug:
+            self.console.print(f"[dim]Rate limit check - Request count: {self.request_count}[/dim]")
+
         return True
 
     def get_matches(self, date: str) -> List[Dict[str, Any]]:
@@ -94,6 +101,9 @@ class FootballAPI:
         Raises:
             Exception: If the API request fails.
         """
+        if self.debug:
+            self.console.print(f"\n[yellow]Fetching matches for date: {date}[/yellow]")
+
         self.logger.info("Fetching matches for: %s", date)
 
         url = f"{self.base_url}/fixtures"
@@ -101,10 +111,33 @@ class FootballAPI:
 
         try:
             self._rate_limit_check()
+            if self.debug:
+                self.console.print(f"[blue]API Request:[/blue] {url}")
+                self.console.print(f"[blue]Params:[/blue] {params}")
+
             self.logger.info("Making API request to %s with params %s", url, params)
             response = requests.get(url, headers=self.headers, params=params)
             response.raise_for_status()
             data = response.json()
+
+            if self.debug:
+                self.console.print(f"[green]Response status: {response.status_code}[/green]")
+                self.console.print(f"[green]Found {len(data.get('response', []))} fixtures[/green]")
+                # API 응답 데이터 출력 추가
+                self.console.print("\n[cyan]API Response Data:[/cyan]")
+                for fixture in data.get("response", [])[:3]:  # 처음 3개 경기만 출력
+                    self.console.print(
+                        f"\n[yellow]Match:[/yellow] "
+                        f"{fixture['teams']['home']['name']} vs {fixture['teams']['away']['name']}"
+                    )
+                    self.console.print(
+                        f"[dim]League:[/dim] {fixture['league']['name']}\n"
+                        f"[dim]Score:[/dim] {fixture['goals']['home']} - {fixture['goals']['away']}\n"
+                        f"[dim]Status:[/dim] {fixture['fixture']['status']['long']}\n"
+                        f"[dim]Venue:[/dim] {fixture['fixture'].get('venue', {}).get('name', 'Unknown')}"
+                    )
+                if len(data.get("response", [])) > 3:
+                    self.console.print("[dim]... and more matches ...[/dim]\n")
 
             self.logger.debug("API response received")
 
@@ -132,7 +165,13 @@ class FootballAPI:
 
             self.logger.info("Found %d completed matches for %s", len(matches), date)
 
+            if self.debug:
+                self.console.print(f"[green]Successfully processed {len(matches)} completed matches[/green]")
+
             # Get goal data in parallel for better performance
+            if matches and self.debug:
+                self.console.print("[yellow]Fetching goal details for matches...[/yellow]")
+
             if matches:
                 with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
                     match_goals = list(executor.map(
@@ -147,6 +186,8 @@ class FootballAPI:
             return matches
 
         except Exception as e:
+            if self.debug:
+                self.console.print(f"[red]Error fetching matches:[/red] {str(e)}")
             self.logger.error("Error fetching matches: %s", str(e), exc_info=True)
             return []
 
@@ -220,10 +261,22 @@ class FootballAPI:
 
         try:
             self._rate_limit_check()
-            self.logger.debug("Fetching goals for fixture: %d", fixture_id)
+            if self.debug:
+                self.console.print(f"[dim]Fetching goals for fixture {fixture_id}...[/dim]")
+
             response = requests.get(url, headers=self.headers, params=params)
             response.raise_for_status()
             data = response.json()
+
+            if self.debug:
+                self.console.print(f"\n[cyan]Goal Events for fixture {fixture_id}:[/cyan]")
+                for event in data["response"]:
+                    if event["type"] == "Goal" and event["detail"] != "Missed Penalty":
+                        self.console.print(
+                            f"[yellow]{event['time']['elapsed']}'[/yellow] "
+                            f"{event['player']['name']} ({event['team']['name']}) - "
+                            f"[dim]{event.get('detail', 'Goal')}[/dim]"
+                        )
 
             goals = []
             for event in data["response"]:
@@ -236,8 +289,12 @@ class FootballAPI:
                     }
                     goals.append(goal)
 
-            self.logger.debug("Found %d goals for fixture %d", len(goals), fixture_id)
+            if self.debug and goals:
+                self.console.print(f"[dim]Found {len(goals)} goals for fixture {fixture_id}[/dim]")
+
             return goals
         except Exception as e:
+            if self.debug:
+                self.console.print(f"[red]Error fetching goals for match {fixture_id}:[/red] {str(e)}")
             self.logger.error("Error fetching goals for match %d: %s", fixture_id, str(e), exc_info=True)
             return []

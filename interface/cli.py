@@ -30,7 +30,8 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.table import Table
 
-# Assume these modules are updated to handle regional queries.
+# Import fetch_matches from utils.data_fetcher
+from utils.data_fetcher import fetch_matches
 from api.football_api import FootballAPI
 from database.database_manager import DBManager
 from llm.qna_engine import QnAEngine
@@ -38,7 +39,7 @@ from llm.qna_engine import QnAEngine
 class FootballQnACLI:
     """Command-line interface for the Football Q&A system."""
 
-    def __init__(self, football_api, db_manager, qna_engine, user_location=None):
+    def __init__(self, football_api, db_manager, qna_engine, user_location=None, use_test_data=False):
         """
         Initialize the CLI application with required components.
         Sets up the console, database, API, and QnA engine.
@@ -48,12 +49,14 @@ class FootballQnACLI:
             db_manager: Database manager for match data.
             qna_engine: QnA engine for processing user questions.
             user_location: Optional user location to personalize data (e.g., "Europe", "Seoul").
+            use_test_data: Whether to use test data instead of live API.
         """
         self.console = Console()
         self.db_manager = db_manager
         self.football_api = football_api
         self.qna_engine = qna_engine
         self.user_location = user_location
+        self.use_test_data = use_test_data
         self.data_refreshed = False
 
     def start(self):
@@ -87,6 +90,9 @@ class FootballQnACLI:
         self.console.print(f"\ntype [bold]'help'[/bold] for available commands or [bold]'exit'[/bold] to quit.\n")
         if self.user_location:
             self.console.print(f"[blue]User Location:[/blue] {self.user_location}")
+            
+        if self.use_test_data:
+            self.console.print(f"[yellow]Running in TEST MODE with mock data[/yellow]")
 
     def _check_data_freshness(self):
         """Check if match data needs to be refreshed from the API."""
@@ -97,7 +103,7 @@ class FootballQnACLI:
             self.console.print("[yellow]Match data is outdated. Refreshing from API...[/yellow]")
             self._refresh_data()
         else:
-            self.console.print(f"[dim]Using cached match data (last updated: {last_update.strftime('%Y-%m-%d %H:%M:%S')} UTC)[/dim]")
+            self.console.print(f"[dim]Using {'test' if self.use_test_data else 'cached'} match data (last updated: {last_update.strftime('%Y-%m-%d %H:%M:%S')} UTC)[/dim]")
 
     def _refresh_data(self):
         """Refresh match data from the football API."""
@@ -106,16 +112,38 @@ class FootballQnACLI:
                 yesterday = datetime.utcnow() - timedelta(days=1)
                 date_str = yesterday.strftime("%Y-%m-%d")
                 
-                # Update the API call to include the user's location if provided.
-                if self.user_location:
-                    matches = self.football_api.get_matches(date_str, location=self.user_location)
+                if self.use_test_data:
+                    # Use the imported fetch_matches function for test data
+                    matches = fetch_matches(date_str, use_test_data=True)
+                    if matches:
+                        transformed_matches = []
+                        for match in matches:
+                            transformed_match = {
+                                "date": date_str,
+                                "home_team": match["teams"]["home"]["name"],
+                                "away_team": match["teams"]["away"]["name"],
+                                "home_score": match["goals"]["home"],
+                                "away_score": match["goals"]["away"],
+                                "league": match["league"]["name"],
+                                "fixture_id": match["fixture"]["id"],
+                                "goals": []  # Transform goals if needed
+                            }
+                            transformed_matches.append(transformed_match)
+                        matches = transformed_matches
                 else:
-                    matches = self.football_api.get_matches(date_str)
+                    # Use live API
+                    if self.user_location:
+                        matches = self.football_api.get_matches(date_str, location=self.user_location)
+                    else:
+                        matches = self.football_api.get_matches(date_str)
                 
-                self.db_manager.save_matches(matches)
-                self.data_refreshed = True
-
-                self.console.print(f"[green]Successfully refreshed data. {len(matches)} matches retrieved.[/green]")
+                if matches:
+                    self.db_manager.save_matches(matches)
+                    self.data_refreshed = True
+                    self.console.print(f"[green]Successfully refreshed data. {len(matches)} matches retrieved.[/green]")
+                else:
+                    self.console.print("[yellow]No matches found for the specified date.[/yellow]")
+                    
             except Exception as e:
                 self.console.print(f"[bold red]Failed to refresh data: {str(e)}[/bold red]")
 
@@ -149,12 +177,21 @@ class FootballQnACLI:
         """
         self.console.print("[dim]Thinking...[/dim]")
 
+        if not self.data_refreshed:
+            self.console.print("[yellow]No data available. Try running with --fetch flag first:[/yellow]")
+            self.console.print("python main.py --fetch")
+            return
+
         yesterday = datetime.utcnow() - timedelta(days=1)
         date_str = yesterday.strftime("%Y-%m-%d")
         matches = self.db_manager.get_matches(date_str)
 
         if not matches:
-            self.console.print("[yellow]No match data available for yesterday.[/yellow]")
+            self.console.print("[yellow]No match data available for yesterday. Possible reasons:[/yellow]")
+            self.console.print("1. No matches were played yesterday")
+            self.console.print("2. API key not configured (.env file)")
+            self.console.print("3. Database connection error")
+            self.console.print("\nTry refreshing data with: [bold]refresh[/bold] command")
             return
 
         try:
@@ -254,14 +291,25 @@ def main():
     parser = argparse.ArgumentParser(description="Football Matches Q&A CLI")
     parser.add_argument("--refresh", action="store_true", help="Force refresh of match data")
     parser.add_argument("--location", type=str, help="Specify your location (e.g., Europe, Seoul)")
+    parser.add_argument("--test", action="store_true", help="Use test data instead of real API")
     args = parser.parse_args()
 
-    # Initialize components (make sure these are updated to support location-based data)
-    football_api = FootballAPI()
-    db_manager = DBManager()
+    # Initialize components based on whether we're using test data
+    if args.test:
+        from utils.test_data import TestFootballAPI, TestDBManager
+        football_api = TestFootballAPI()
+        db_manager = TestDBManager()
+        print("Running with TEST DATA - No API calls will be made")
+    else:
+        # Regular API and DB manager
+        football_api = FootballAPI()
+        db_manager = DBManager()
+
     qna_engine = QnAEngine()
 
-    cli = FootballQnACLI(football_api, db_manager, qna_engine, user_location=args.location)
+    cli = FootballQnACLI(football_api, db_manager, qna_engine, 
+                       user_location=args.location,
+                       use_test_data=args.test)
 
     if args.refresh:
         cli.console.print("[yellow]Forcing data refresh...[/yellow]")

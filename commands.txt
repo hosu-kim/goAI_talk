@@ -1,0 +1,5 @@
+Available commands:
+help - Show this help message
+exit - Exit the program
+date YYYY-MM-DD - Fetch matches for a specific date
+// ...existing commands...

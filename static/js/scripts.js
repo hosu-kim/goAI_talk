@@ -204,84 +204,73 @@ document.addEventListener('DOMContentLoaded', function() {
 
 	// Display match cards using sample data (for demo)
 	const displaySampleMatches = () => {
-		const sampleMatches = [make it clear this is sample data
-			{nst today = new Date();
-				league: "Premier League",.toISOString().split('T')[0]; // YYYY-MM-DD format
+		const sampleMatches = [
+			{
+				league: "Premier League",
 				date: "2023-05-15",
 				home_team: "Manchester United",
 				away_team: "Liverpool",
-				home_score: 2,er League",
-				away_score: 1,dDate + " (Sample Data)",
-				goals: [m: "Manchester United",
+				home_score: 2,
+				away_score: 1,
+				goals: [
 					{ minute: 23, player: "Bruno Fernandes", team: "Manchester United" },
 					{ minute: 45, player: "Marcus Rashford", team: "Manchester United" },
 					{ minute: 78, player: "Mohamed Salah", team: "Liverpool" }
-				]oals: [
-			},{ minute: 23, player: "Bruno Fernandes", team: "Manchester United" },
-			{	{ minute: 45, player: "Marcus Rashford", team: "Manchester United" },
-				league: "La Liga",yer: "Mohamed Salah", team: "Liverpool" }
+				]
+			},
+			{
+				league: "La Liga",
 				date: "2023-05-15",
 				home_team: "Barcelona",
 				away_team: "Real Madrid",
-				home_score: 3,ga",
-				away_score: 3,-15",
-				goals: [m: "Barcelona",
+				home_score: 3,
+				away_score: 3,
+				goals: [
 					{ minute: 12, player: "Robert Lewandowski", team: "Barcelona" },
 					{ minute: 25, player: "Vinicius Jr", team: "Real Madrid" },
 					{ minute: 34, player: "Pedri", team: "Barcelona" },
 					{ minute: 56, player: "Karim Benzema", team: "Real Madrid" },
-					{ minute: 67, player: "Raphinha", team: "Barcelona" },celona" },
-					{ minute: 89, player: "Rodrygo", team: "Real Madrid" }d" },
-				]{ minute: 34, player: "Pedri", team: "Barcelona" },
-			},{ minute: 56, player: "Karim Benzema", team: "Real Madrid" },
-			{	{ minute: 67, player: "Raphinha", team: "Barcelona" },
-				league: "Serie A",yer: "Rodrygo", team: "Real Madrid" }
+					{ minute: 67, player: "Raphinha", team: "Barcelona" },
+					{ minute: 89, player: "Rodrygo", team: "Real Madrid" }
+				]
+			},
+			{
+				league: "Serie A",
 				date: "2023-05-15",
 				home_team: "AC Milan",
 				away_team: "Inter Milan",
-				home_score: 0, A",
-				away_score: 2,-15",
-				goals: [m: "AC Milan",
+				home_score: 0,
+				away_score: 2,
+				goals: [
 					{ minute: 34, player: "Lautaro Martinez", team: "Inter Milan" },
 					{ minute: 78, player: "Romelu Lukaku", team: "Inter Milan" }
-				]way_score: 2,
-			}goals: [
-		];	{ minute: 34, player: "Lautaro Martinez", team: "Inter Milan" },
-					{ minute: 78, player: "Romelu Lukaku", team: "Inter Milan" }
+				]
+			}
+		];
 		const matchCardsContainer = document.getElementById('matchCards');
 		if (matchCardsContainer) {
 			// Add league filter options
 			const leagueFilter = document.getElementById('leagueFilter');
 			const leagues = [...new Set(sampleMatches.map(match => match.league))];
-			f (matchCardsContainer) {
-			leagues.forEach(league => {s
-				const option = document.createElement('option');gueFilter');
-				option.value = league; Set(sampleMatches.map(match => match.league))];
+			leagues.forEach(league => {
+				const option = document.createElement('option');
+				option.value = league;
 				option.textContent = league;
 				leagueFilter.appendChild(option);
-			});nst option = document.createElement('option');
-				option.value = league;
-			// Add match cardst = league;
-			sampleMatches.forEach(match => {);
+			});
+			// Add match cards
+			sampleMatches.forEach(match => {
 				const card = createMatchCard(match);
 				matchCardsContainer.appendChild(card);
-			});Add match cards
-		}sampleMatches.forEach(match => {
-	}		const card = createMatchCard(match);
-				matchCardsContainer.appendChild(card);
+			});
+		}
+	}
 	// Display sample data (until API is connected)
 	displaySampleMatches();
 	
 	// Display answer with animation
 	const displayAnswer = (answer) => {
 		const answerSection = document.getElementById('answer');
-		if (!answerSection) return;
-		/ Display sample data (until API is connected)
-		answerSection.innerHTML = `
-			<div class="answer-container animate__animated animate__fadeInUp">
-				<h3>Answer</h3>with animation
-				<p>${answer}</p> = (answer) => {
-			</div>nswerSection = document.getElementById('answer');
 		if (!answerSection) return;
 		
 		let demoNotice = '';
@@ -301,41 +290,40 @@ document.addEventListener('DOMContentLoaded', function() {
 		answerSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 	}
 
-	// Utility functions
+	// 불필요한 주석과 중복 코드 제거, isElementInViewport 함수 정리
+	function isElementInViewport(el) {
+		const rect = el.getBoundingClientRect();
+		return (
+			rect.top >= 0 &&
+			rect.left >= 0 &&
+			rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+			rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+		);
+	}
 
+	// API 상태 체크 함수 정리
+	function checkApiStatus() {
+		fetch('/api/status')
+			.then(response => response.json())
+			.then(data => {
+				const statusIndicator = document.querySelector('.status-indicator');
+				const statusText = document.querySelector('.status-text');
+				
+				if (data.status === 'online') {
+					statusIndicator.classList.remove('offline');
+					statusIndicator.classList.add('online');
+					statusText.textContent = 'API Status: Online (Live Data)';
+					window.isDemoMode = false;
+				}
+			})
+			.catch(err => {
+				console.log('API status check failed:', err);
+			});
+	}
 
+	// 초기 애니메이션 실행
+	setTimeout(animateElements, 100);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-});	// setInterval(checkApiStatus, 60000); // Check every minute	// checkApiStatus();	// Call this when API integration is ready	};			});				console.log('API status check failed:', err);			.catch(err => {			})				}					window.isDemoMode = false;					statusText.textContent = 'API Status: Online (Live Data)';					statusIndicator.classList.add('online');					statusIndicator.classList.remove('offline');				if (data.status === 'online') {								const statusText = document.querySelector('.status-text');				const statusIndicator = document.querySelector('.status-indicator');			.then(data => {			.then(response => response.json())		fetch('/api/status')
-
-
-
-
-
-
-
-});	setTimeout(animateElements, 100);	// Run animations on page load	}		);
-
-
-			rect.right <= (window.innerWidth || document.documentElement.clientWidth)			rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&			rect.left >= 0 &&			rect.top >= 0 &&		return (		const rect = el.getBoundingClientRect();	const isElementInViewport = (el) => {	// This function would be called when real API is implemented
-	const checkApiStatus = () => {
+	// API 상태 주기적 체크 (1분)
+	setInterval(checkApiStatus, 60000);
+});

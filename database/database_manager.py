@@ -25,6 +25,8 @@ import sqlite3
 import os
 import logging
 from datetime import datetime
+from contextlib import contextmanager
+from typing import Generator, List, Dict, Any
 
 class DBManager:
 	def __init__(self):
@@ -95,57 +97,66 @@ class DBManager:
 		conn.close()
 		self.logger.info(f"Database setup complete at {self.db_path}")
 
-	def save_matches(self, matches):
+	@contextmanager
+	def get_connection(self) -> Generator:
+		"""Context manager for database connections."""
+		conn = sqlite3.connect(self.db_path)
+		conn.row_factory = sqlite3.Row
+		try:
+			yield conn
+			conn.commit()
+		except Exception as e:
+			conn.rollback()
+			raise
+		finally:
+			conn.close()
+            
+	def save_matches(self, matches: List[Dict[str, Any]]) -> bool:
+		"""Save match data to database with improved error handling."""
 		if not matches:
 			self.logger.warning("No matches to save.")
 			return False
-		
-		self.logger.info(f"Saving {len(matches)} matches to database")
-		self._clear_old_data()
-
-		conn = sqlite3.connect(self.db_path)
-		cursor = conn.cursor()
-
+			
 		try:
-			for match in matches:
-				cursor.execute('''
-				INSERT INTO MATCHES (date, home_team, away_team, home_score, away_score, league, fixture_id)
-				VALUES (?, ?, ?, ?, ?, ?, ?)
-				''', (
-					match["date"],
-					match["home_team"],
-					match["away_team"],
-					match["home_score"],
-					match["away_score"],
-					match["league"],
-					match["fixture_id"]
-				))
-
-				match_id = cursor.lastrowid
-				self.logger.debug(f"Inserted match: {match['home_team']} vs {match['away_team']} with ID {match_id}")
-
-				for goal in match.get("goals", []):
+			with self.get_connection() as conn:
+				cursor = conn.cursor()
+				for match in matches:
 					cursor.execute('''
-					INSERT INTO goals (match_id, team, player, minute)
-					VALUES (?, ?, ?, ?)
+					INSERT INTO MATCHES (date, home_team, away_team, home_score, away_score, league, fixture_id)
+					VALUES (?, ?, ?, ?, ?, ?, ?)
 					''', (
-						match_id,
-						goal["team"],
-						goal["player"],
-						goal["minute"]
+						match["date"],
+						match["home_team"],
+						match["away_team"],
+						match["home_score"],
+						match["away_score"],
+						match["league"],
+						match["fixture_id"]
 					))
 
-			conn.commit()
+					match_id = cursor.lastrowid
+					self.logger.debug(f"Inserted match: {match['home_team']} vs {match['away_team']} with ID {match_id}")
+
+					for goal in match.get("goals", []):
+						cursor.execute('''
+						INSERT INTO goals (match_id, team, player, minute)
+						VALUES (?, ?, ?, ?)
+						''', (
+							match_id,
+							goal["team"],
+							goal["player"],
+							goal["minute"]
+						))
+
 			self.logger.info(f"Successfully saved {len(matches)} matches to database.")
 			return True
 		
-		except Exception as e:
-			conn.rollback()
-			self.logger.error(f"Error saving matches to database: {e}", exc_info=True)
+		except sqlite3.IntegrityError as e:
+			self.logger.error(f"Database integrity error: {e}")
 			return False
-		
-		finally:
-			conn.close()
+		except Exception as e:
+			self.logger.error(f"Unexpected error saving matches: {e}")
+			return False
 	
 	def _clear_old_data(self):
 		conn = sqlite3.connect(self.db_path)
