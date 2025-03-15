@@ -40,7 +40,6 @@ from dotenv import load_dotenv
 from utils.config import setup_logger, load_additional_config
 from utils.data_utils import get_current_time
 from utils.data_fetcher import fetch_matches
-from football_api import fetch_matches_for_date
 from chat_engine import process_question
 
 # Initialize colorama
@@ -49,7 +48,10 @@ init()
 # Load environment variables
 load_dotenv()
 
-# Setup application logger
+# 로그 관련 설정 통합
+from utils.config import setup_logger
+
+# Setup application logger - using the unified setup
 logger = setup_logger("main")
 
 # Constants
@@ -140,12 +142,16 @@ def fetch_recent_matches(days=DEFAULT_DAYS, force=False):
     
     print(f"Fetching match data for the last {days} days...")
     
+    # Create a football API instance
+    football_api = FootballAPI()
+    
     for i in range(days):
         target_date = today - timedelta(days=i)
         date_str = target_date.strftime("%Y-%m-%d")
         
         print(f"Fetching matches for date: {date_str}")
-        day_matches = fetch_matches_for_date(date_str)
+        # Use the football_api instance method instead
+        day_matches = football_api.fetch_matches_by_date(date_str)
         
         if day_matches:
             all_matches.extend(day_matches)

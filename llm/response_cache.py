@@ -26,14 +26,14 @@ import os
 import json
 import pickle
 from datetime import datetime, timedelta
-from utils.config import setup_logger
+from utils.config import setup_logger  # 통합된 logger 사용
 
 class ResponseCache:
 	"""
 	LLM 응답 캐싱 시스템
 	질문과 데이터 기반으로 응답을 캐싱하여 API 호출 감소
 	"""
-	def __init__(self, cache_dir="cache", ttl_hours=24):
+	def __init__(self, cache_dir="../cache", ttl_hours=24):
 		"""
 		응답 캐싱 시스템 초기화
 		
@@ -44,7 +44,7 @@ class ResponseCache:
 		self.cache_dir = cache_dir
 		os.makedirs(cache_dir, exist_ok=True)
 		self.ttl = timedelta(hours=ttl_hours)
-		self.logger = setup_logger("cache")
+		self.logger = setup_logger("cache")  # 통합된 logger 사용
 		
 	def _get_cache_key(self, question, data_hash):
 		"""캐시 키 생성"""

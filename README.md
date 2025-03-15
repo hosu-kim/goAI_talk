@@ -151,6 +151,62 @@ docker run -it football-qna-bot
 docker run -p 8000:8000 football-qna-bot --web
 ```
 
+## Docker 배포 가이드
+
+### 사전 요구사항
+- Docker 및 Docker Compose 설치
+- API 키 설정 (.env 파일에 저장)
+
+### Docker로 실행하기
+
+1. Docker 이미지 빌드:
+```bash
+docker-compose build
+```
+
+2. Docker 컨테이너 실행:
+```bash
+# 웹 인터페이스로 실행
+docker-compose up
+
+# 백그라운드로 실행
+docker-compose up -d
+```
+
+3. CLI 모드로 실행:
+```bash
+# docker-compose.yml의 command 부분을 수정하거나
+# 아래 명령어로 직접 실행
+docker-compose run --rm football-qa-bot python main.py
+```
+
+4. 데이터 갱신:
+```bash
+docker-compose run --rm football-qa-bot python main.py --fetch
+```
+
+5. 컨테이너 중지:
+```bash
+docker-compose down
+```
+
+### Docker 환경 변수
+
+Docker Compose 파일에서 다음과 같은 환경 변수를 설정할 수 있습니다:
+
+- `DEBUG`: 디버그 모드 활성화 (True/False)
+- `LOG_LEVEL`: 로그 레벨 (INFO, DEBUG, WARNING, ERROR, CRITICAL)
+- `LOG_DIR`: 로그 저장 디렉토리
+- `USER_TIMEZONE`: 사용자 타임존 (기본값: UTC)
+
+### Docker 볼륨
+
+다음 볼륨들이 마운트됩니다:
+
+- `./logs`: 애플리케이션 로그 파일
+- `./database`: SQLite 데이터베이스 파일
+- `./cache`: 캐시 데이터
+
 ## Contributing
 
 1. Fork the repository

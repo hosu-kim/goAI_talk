@@ -37,8 +37,7 @@ from utils.data_utils import get_yesterday_date
 load_dotenv()
 
 app = Flask(__name__, 
-            static_folder="../static", 
-            template_folder="../templates")
+            static_folder="../static")
 
 # Setup logger
 logger = setup_logger("web_interface")

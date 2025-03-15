@@ -24,6 +24,32 @@ body {
   flex-direction: column;
 }
 
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 40%;
+  height: 100%;
+  background: radial-gradient(circle at center, rgba(46, 204, 113, 0.03), transparent 70%);
+  z-index: -1;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 30%;
+  height: 60%;
+  background: radial-gradient(circle at center, rgba(52, 152, 219, 0.03), transparent 70%);
+  z-index: -1;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 .container {
   max-width: 1200px;
   margin: 0 auto;
@@ -105,6 +131,20 @@ main {
   background: #fff;
 }
 
+.question-input:focus + .input-highlight {
+  width: 100%;
+}
+
+.input-highlight {
+  height: 3px;
+  width: 0;
+  background: var(--primary-color);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  transition: width 0.3s ease;
+}
+
 .answer-container {
   background-color: white;
   padding: 2rem;
@@ -161,6 +201,7 @@ main {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1.5rem;
+  perspective: 1000px;
 }
 
 .match-card {
@@ -168,15 +209,25 @@ main {
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 8px 16px var(--shadow-color);
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
   display: flex;
   flex-direction: column;
   position: relative;
+  transform-origin: center bottom;
 }
 
 .match-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 30px rgba(0, 0, 0, 0.15);
+  z-index: 1;
+}
+
+.match-card:nth-child(odd) {
+  animation-delay: 0.1s;
+}
+
+.match-card:nth-child(even) {
+  animation-delay: 0.3s;
 }
 
 .match-card-header {
@@ -216,6 +267,23 @@ main {
 .team-name {
   font-weight: 600;
   font-size: 1.1rem;
+  position: relative;
+  transition: color 0.3s ease;
+}
+
+.team-name::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: var(--accent-color);
+  transition: width 0.3s ease;
+}
+
+.team-name:hover::after {
+  width: 100%;
 }
 
 .team-home {
@@ -233,6 +301,22 @@ main {
   padding: 0.5rem 1rem;
   background: #f8f9fa;
   border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.score::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s;
+}
+
+.score:hover::before {
+  transform: translateX(100%);
 }
 
 .goal-details {
@@ -251,12 +335,17 @@ main {
 
 .goal-item {
   padding: 0.3rem 0;
+  transform: translateX(-10px);
+  opacity: 0;
+  animation: slideInRight 0.5s forwards;
+  animation-delay: calc(0.1s * var(--animation-order, 0));
 }
 
-.goal-minute {
-  font-weight: 600;
-  margin-right: 0.3rem;
-  color: var(--accent-color);
+@keyframes slideInRight {
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 footer {
@@ -282,6 +371,7 @@ footer {
   color: white;
   position: relative;
   overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .btn-primary::after {
@@ -377,77 +467,93 @@ footer {
 
 /* API Status Indicator */
 .api-status {
-  margin-bottom: 1rem;olor: #e74c3c;
+  margin-bottom: 1rem;
   display: flex;
-  align-items: center;ont-size: 0.8rem;
-  justify-content: center;padding: 0.3rem 0.8rem;
-  gap: 0.5rem;20px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
-isplay: inline-block;
-.status-indicator {margin-top: 0.8rem;
-  width: 12px; 2s infinite;
-  height: 12px;percase;
-  border-radius: 50%;etter-spacing: 1px;
+
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
   display: inline-block;
 }
 
-.status-indicator.online {ackground-color: rgba(231, 76, 60, 0.1);
-  background-color: #2ecc71; border-left: 4px solid #e74c3c;
-  box-shadow: 0 0 8px #2ecc71;  padding: 0.8rem 1.2rem;
-};
-s: 4px;
+.status-indicator.online {
+  background-color: #2ecc71;
+  box-shadow: 0 0 8px #2ecc71;
+}
+
 .status-indicator.offline {
   background-color: #e74c3c;
-  box-shadow: 0 0 8px #e74c3c;.demo-notice p {
-}n: 0;
+  box-shadow: 0 0 8px #e74c3c;
+}
 
-  font-size: 0.9rem;status-text {
-}  font-size: 0.8rem;
-ty: 0.9;
+.status-text {
+  font-size: 0.8rem;
+}
+
+/* Demo Notice */
+.demo-notice {
+  background-color: rgba(231, 76, 60, 0.1);
+  border-left: 4px solid #e74c3c;
+  padding: 0.8rem 1.2rem;
+  border-radius: 4px;
+  margin-top: 0.8rem;
+}
+
+.demo-notice p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* Animation */
 @keyframes pulse {
   0% {
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(231, 76, 60, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+  }
+}
 
+/* Demo Badge */
+.demo-badge {
+  background-color: var(--accent-color);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  display: inline-block;
+  margin-top: 0.8rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  animation: pulse 2s infinite;
+}
 
+/* Enhanced animations and dynamic effects */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
+.fade-in {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-}  margin-top: 2rem;.mt-4 {}  margin-bottom: 1.5rem;.mb-3 {}  text-align: center;.text-center {/* Utility classes */}  }    grid-template-columns: 1fr;  .match-grid {    }    padding: 1.5rem;  .question-form {    }    font-size: 1rem;  .app-subtitle {    }    font-size: 2.2rem;  .app-title {@media (max-width: 768px) {/* Responsive adjustments */}  }    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);  100% {  }    box-shadow: 0 0 0 10px rgba(231, 76, 60, 0);  70% {  }    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4);/* Responsive adjustments */
+/* Responsive adjustments */
 @media (max-width: 768px) {
   .app-title {
     font-size: 2.2rem;

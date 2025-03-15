@@ -26,7 +26,19 @@ import logging
 from dotenv import load_dotenv
 import json
 from typing import Dict, Any
-from utils.constants import LOG_LEVELS
+
+# Try to import LOG_LEVELS from constants, but provide fallback if not available
+try:
+    from utils.constants import LOG_LEVELS
+except ImportError:
+    # Fallback logging levels if import fails
+    LOG_LEVELS = {
+        "DEBUG": logging.DEBUG,
+        "INFO": logging.INFO,
+        "WARNING": logging.WARNING,
+        "ERROR": logging.ERROR,
+        "CRITICAL": logging.CRITICAL
+    }
 
 def load_config() -> Dict[str, Any]:
     """Load and validate configuration settings."""
@@ -47,6 +59,9 @@ def load_config() -> Dict[str, Any]:
         # Database settings
         "db_dir": os.getenv("DB_DIR", "database"),
         "db_name": os.getenv("DB_NAME", "football_matches.db"),
+        
+        # Logging settings
+        "log_dir": os.getenv("LOG_DIR", "logs"),
     }
     
     # Complete DB path
@@ -66,12 +81,27 @@ def load_config() -> Dict[str, Any]:
         
     return config
 
-def setup_logger(name, log_dir="logs"):
-    """Unified logger setup function."""
-    config = load_config()
+def setup_logger(name, log_file=None):
+    """Unified logger setup function that uses a single log directory.
     
+    Args:
+        name: The name of the logger
+        log_file: Optional specific log filename, defaults to name.log
+        
+    Returns:
+        A configured logger instance
+    """
+    config = load_config()
+    log_dir = config["log_dir"]
+    
+    # Ensure log directory exists
     os.makedirs(log_dir, exist_ok=True)
-    log_file = os.path.join(log_dir, f"{name}.log")
+    
+    # Set default log file name if not provided
+    if not log_file:
+        log_file = f"{name}.log"
+    
+    log_path = os.path.join(log_dir, log_file)
     
     logger = logging.getLogger(name)
     logger.setLevel(config["log_level_enum"])
@@ -79,7 +109,7 @@ def setup_logger(name, log_dir="logs"):
     # Add handlers only if they don't exist
     if not logger.handlers:
         # File handler
-        file_handler = logging.FileHandler(log_file)
+        file_handler = logging.FileHandler(log_path)
         file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         file_handler.setFormatter(file_formatter)
         logger.addHandler(file_handler)

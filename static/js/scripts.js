@@ -326,4 +326,140 @@ document.addEventListener('DOMContentLoaded', function() {
 
 	// API 상태 주기적 체크 (1분)
 	setInterval(checkApiStatus, 60000);
+
+	// Enhanced animations for page elements
+	function animateElement(el, animation = 'fadeIn', delay = 0) {
+		el.style.opacity = '0';
+		setTimeout(() => {
+			el.style.opacity = '1';
+			el.classList.add('animate__animated', `animate__${animation}`);
+			el.addEventListener('animationend', () => {
+				el.classList.remove('animate__animated', `animate__${animation}`);
+			});
+		}, delay);
+	}
+
+	// Animate goals with delay for staggered effect
+	function animateGoalItems() {
+		const goalItems = document.querySelectorAll('.goal-item');
+		goalItems.forEach((item, index) => {
+			item.style.setProperty('--animation-order', index);
+		});
+	}
+
+	// Add scroll reveal animations
+	function setupScrollAnimations() {
+		const animatedElements = document.querySelectorAll('.match-card, .answer-container, .question-form');
+		
+		const observer = new IntersectionObserver((entries) => {
+			entries.forEach(entry => {
+				if (entry.isIntersecting) {
+					entry.target.classList.add('fade-in');
+					observer.unobserve(entry.target);
+				}
+			});
+		}, {
+			threshold: 0.1,
+			rootMargin: '0px 0px -50px 0px'
+		});
+		
+		animatedElements.forEach(el => observer.observe(el));
+	}
+
+	// Add parallax effect to match cards
+	function setupParallax() {
+		const cards = document.querySelectorAll('.match-card');
+		
+		document.addEventListener('mousemove', event => {
+			const { clientX, clientY } = event;
+			const centerX = window.innerWidth / 2;
+			const centerY = window.innerHeight / 2;
+			
+			cards.forEach(card => {
+				const rect = card.getBoundingClientRect();
+				if (isElementInViewport(card)) {
+					const cardCenterX = rect.left + rect.width / 2;
+					const cardCenterY = rect.top + rect.height / 2;
+					
+					const offsetX = (clientX - cardCenterX) / 40;
+					const offsetY = (clientY - cardCenterY) / 40;
+					
+					card.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(1.01)`;
+				}
+			});
+		});
+		
+		// Reset transform when not hovering
+		cards.forEach(card => {
+			card.addEventListener('mouseleave', () => {
+				card.style.transform = '';
+			});
+		});
+	}
+
+	// Add match card flip effect
+	function setupCardFlipEffects() {
+		const cards = document.querySelectorAll('.match-card');
+		
+		cards.forEach(card => {
+			card.addEventListener('click', () => {
+				if (!card.classList.contains('flipping')) {
+					card.classList.add('flipping');
+					card.style.transform = 'rotateY(180deg)';
+					
+					setTimeout(() => {
+						card.classList.remove('flipping');
+						card.style.transform = '';
+					}, 1500);
+				}
+			});
+		});
+	}
+
+	// Add dynamic background effects
+	function setupDynamicBackground() {
+		const root = document.documentElement;
+		
+		document.addEventListener('mousemove', event => {
+			const { clientX, clientY } = event;
+			const moveX = clientX / window.innerWidth - 0.5;
+			const moveY = clientY / window.innerHeight - 0.5;
+			
+			root.style.setProperty('--bg-position-x', moveX * 10 + 'px');
+			root.style.setProperty('--bg-position-y', moveY * 10 + 'px');
+		});
+	}
+
+	// Add interactive header elements
+	function setupHeaderInteractions() {
+		const header = document.querySelector('.app-header');
+		const title = document.querySelector('.app-title');
+		
+		window.addEventListener('scroll', () => {
+			const scrollPos = window.scrollY;
+			// Scale down the header slightly on scroll
+			if (scrollPos > 50) {
+				header.style.transform = 'scale(0.98)';
+				header.style.boxShadow = '0 8px 20px rgba(0,0,0,0.15)';
+			} else {
+				header.style.transform = 'scale(1)';
+				header.style.boxShadow = '0 4px 12px var(--shadow-color)';
+			}
+		});
+		
+		title.addEventListener('mouseover', () => {
+			title.classList.add('animate__rubberBand');
+			setTimeout(() => {
+				title.classList.remove('animate__rubberBand');
+			}, 1000);
+		});
+	}
+
+	// Initialize dynamic effects
+	setTimeout(() => {
+		setupScrollAnimations();
+		setupDynamicBackground();
+		setupHeaderInteractions();
+		animateGoalItems();
+	}, 500);
 });

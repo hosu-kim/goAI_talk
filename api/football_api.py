@@ -26,28 +26,32 @@ import requests
 import datetime
 import concurrent.futures
 from typing import List, Dict, Any, Optional
+import logging
+import sys
+import os
+import time  # Make sure this is imported at the top
+
+# Add parent directory to path to ensure imports work correctly
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Always import from utils.config
 from utils.config import setup_logger, load_config
 from rich.console import Console
 
 class FootballAPI:
-    """Client for interacting with the football API.
-
-    This class handles API requests to fetch football match data, goals,
-    and other related information.
-    """
+    """Client for interacting with the football API."""
 
     def __init__(self):
-        """Initialize the FootballAPI client.
-
-        Loads API key and sets up headers, base URL, and logger.
-        """
+        """Initialize the FootballAPI client."""
         config = load_config()
         self.api_key = config["football_api_key"]
-        self.base_url = "https://v3.football.api-sports.io"
+        self.base_url = "https://api.football-data.org/v4"
+        # Updated headers for football-data.org
         self.headers = {
-            "x-apisports-key": self.api_key,
+            "X-Auth-Token": self.api_key,
         }
 
+        # Use the unified logger
         self.logger = setup_logger("football_api")
         self.request_count = 0
         self.last_request_time = None
@@ -58,7 +62,7 @@ class FootballAPI:
         self.logger.info("FootballAPI initialized")
 
     def _rate_limit_check(self) -> bool:
-        """Implement API rate limiting.
+        """Implement more robust API rate limiting.
 
         Ensures the API requests don't exceed rate limits by introducing
         delays when necessary.
@@ -68,21 +72,25 @@ class FootballAPI:
         """
         now = datetime.datetime.now()
 
-        # First request or more than 1 second since last request
-        if self.last_request_time is None or (now - self.last_request_time).total_seconds() >= 1:
+        # First request or more than 2 seconds since last request (increased from 1)
+        if self.last_request_time is None or (now - self.last_request_time).total_seconds() >= 2:
             self.last_request_time = now
             self.request_count = 1
             return True
 
-        # Limit to maximum 10 requests per second
-        if self.request_count >= 10:
-            self.logger.warning("Rate limit reached, sleeping for 1 second")
-            import time
-            time.sleep(1)
+        # More conservative rate limit: maximum 5 requests per 10 seconds
+        if self.request_count >= 5:
+            wait_time = 3  # Increased wait time to 3 seconds
+            if self.debug:
+                self.console.print(f"[yellow]Rate limit reached, sleeping for {wait_time} seconds[/yellow]")
+            self.logger.warning(f"Rate limit reached, sleeping for {wait_time} seconds")
+            time.sleep(wait_time)
             self.last_request_time = datetime.datetime.now()
             self.request_count = 1
         else:
             self.request_count += 1
+            # Add a small delay between all requests
+            time.sleep(0.5)
 
         if self.debug:
             self.console.print(f"[dim]Rate limit check - Request count: {self.request_count}[/dim]")
@@ -106,90 +114,119 @@ class FootballAPI:
 
         self.logger.info("Fetching matches for: %s", date)
 
-        url = f"{self.base_url}/fixtures"
-        params = {"date": date}
+        url = f"{self.base_url}/matches"
+        params = {
+            "dateFrom": date,
+            "dateTo": date
+        }
 
-        try:
-            self._rate_limit_check()
-            if self.debug:
-                self.console.print(f"[blue]API Request:[/blue] {url}")
-                self.console.print(f"[blue]Params:[/blue] {params}")
+        # Add retry logic for handling rate limits
+        max_retries = 3
+        retry_count = 0
+        retry_delay = 5  # Start with 5 seconds
 
-            self.logger.info("Making API request to %s with params %s", url, params)
-            response = requests.get(url, headers=self.headers, params=params)
-            response.raise_for_status()
-            data = response.json()
+        while retry_count < max_retries:
+            try:
+                self._rate_limit_check()
+                if self.debug:
+                    self.console.print(f"[blue]API Request:[/blue] {url}")
+                    self.console.print(f"[blue]Params:[/blue] {params}")
 
-            if self.debug:
-                self.console.print(f"[green]Response status: {response.status_code}[/green]")
-                self.console.print(f"[green]Found {len(data.get('response', []))} fixtures[/green]")
-                # API 응답 데이터 출력 추가
-                self.console.print("\n[cyan]API Response Data:[/cyan]")
-                for fixture in data.get("response", [])[:3]:  # 처음 3개 경기만 출력
-                    self.console.print(
-                        f"\n[yellow]Match:[/yellow] "
-                        f"{fixture['teams']['home']['name']} vs {fixture['teams']['away']['name']}"
-                    )
-                    self.console.print(
-                        f"[dim]League:[/dim] {fixture['league']['name']}\n"
-                        f"[dim]Score:[/dim] {fixture['goals']['home']} - {fixture['goals']['away']}\n"
-                        f"[dim]Status:[/dim] {fixture['fixture']['status']['long']}\n"
-                        f"[dim]Venue:[/dim] {fixture['fixture'].get('venue', {}).get('name', 'Unknown')}"
-                    )
-                if len(data.get("response", [])) > 3:
-                    self.console.print("[dim]... and more matches ...[/dim]\n")
+                self.logger.info("Making API request to %s with params %s", url, params)
+                response = requests.get(url, headers=self.headers, params=params)
+                
+                # Handle rate limiting with exponential backoff
+                if response.status_code == 429:
+                    retry_count += 1
+                    if retry_count < max_retries:
+                        wait_time = retry_delay * (2 ** (retry_count - 1))  # Exponential backoff
+                        self.logger.warning(f"Rate limited (429). Retry {retry_count}/{max_retries} after {wait_time}s")
+                        if self.debug:
+                            self.console.print(f"[red]Rate limited (429). Retrying in {wait_time} seconds...[/red]")
+                        time.sleep(wait_time)
+                        continue
+                
+                response.raise_for_status()
+                data = response.json()
 
-            self.logger.debug("API response received")
+                if self.debug:
+                    self.console.print(f"[green]Response status: {response.status_code}[/green]")
+                    self.console.print(f"[green]Found {len(data.get('matches', []))} fixtures[/green]")
+                    # API 응답 데이터 출력 추가
+                    self.console.print("\n[cyan]API Response Data:[/cyan]")
+                    for match in data.get("matches", [])[:3]:  # 처음 3개 경기만 출력
+                        self.console.print(
+                            f"\n[yellow]Match:[/yellow] "
+                            f"{match['homeTeam']['name']} vs {match['awayTeam']['name']}"
+                        )
+                        self.console.print(
+                            f"[dim]League:[/dim] {match['competition']['name']}\n"
+                            f"[dim]Score:[/dim] {match['score']['fullTime']['home']} - {match['score']['fullTime']['away']}\n"
+                            f"[dim]Status:[/dim] {match['status']}\n"
+                            f"[dim]Venue:[/dim] {match.get('venue', 'Unknown')}"
+                        )
+                    if len(data.get("matches", [])) > 3:
+                        self.console.print("[dim]... and more matches ...[/dim]\n")
 
-            if "response" not in data:
-                self.logger.error("Unexpected API response format")
-                return []
+                self.logger.debug("API response received")
 
-            matches = []
-            for fixture in data["response"]:
-                if fixture["fixture"]["status"]["short"] == "FT":
-                    match = {
-                        "date": date,
-                        "home_team": fixture["teams"]["home"]["name"],
-                        "away_team": fixture["teams"]["away"]["name"],
-                        "home_score": fixture["goals"]["home"],
-                        "away_score": fixture["goals"]["away"],
-                        "league": fixture["league"]["name"],
-                        "fixture_id": fixture["fixture"]["id"],
-                        "goals": [],
-                        "venue": fixture["fixture"].get("venue", {}).get("name", "Unknown"),
-                        "match_time": fixture["fixture"].get("date", "Unknown"),
-                        "events": []
-                    }
-                    matches.append(match)
+                matches = []
+                for match in data.get("matches", []):
+                    if match.get("status") in ["FINISHED", "AWARDED"]:
+                        match_info = {
+                            "date": date,
+                            "home_team": match.get("homeTeam", {}).get("name", "Unknown"),
+                            "away_team": match.get("awayTeam", {}).get("name", "Unknown"),
+                            "home_score": match.get("score", {}).get("fullTime", {}).get("home", 0),
+                            "away_score": match.get("score", {}).get("fullTime", {}).get("away", 0),
+                            "league": match.get("competition", {}).get("name", "Unknown"),
+                            "fixture_id": match.get("id"),
+                            "goals": [],
+                            "venue": match.get("venue", "Unknown"),
+                            "match_time": match.get("utcDate", "Unknown"),
+                            "events": []
+                        }
+                        matches.append(match_info)
 
-            self.logger.info("Found %d completed matches for %s", len(matches), date)
+                self.logger.info("Found %d completed matches for %s", len(matches), date)
 
-            if self.debug:
-                self.console.print(f"[green]Successfully processed {len(matches)} completed matches[/green]")
+                if self.debug:
+                    self.console.print(f"[green]Successfully processed {len(matches)} completed matches[/green]")
 
-            # Get goal data in parallel for better performance
-            if matches and self.debug:
-                self.console.print("[yellow]Fetching goal details for matches...[/yellow]")
+                # Modify goal fetching to respect rate limits
+                if matches and self.debug:
+                    self.console.print("[yellow]Fetching goal details for matches...[/yellow]")
 
-            if matches:
-                with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-                    match_goals = list(executor.map(
-                        self._get_goals_for_match, 
-                        [match["fixture_id"] for match in matches]
-                    ))
+                if matches:
+                    # Use single-threaded approach instead of ThreadPoolExecutor to better manage rate limits
+                    match_goals = []
+                    for match in matches:
+                        goals = self._get_goals_for_match(match["fixture_id"])
+                        match_goals.append(goals)
+                        time.sleep(1)  # Add delay between goal fetches
 
-                # Assign goal data to matches
-                for i, match in enumerate(matches):
-                    match["goals"] = match_goals[i]
+                    # Assign goal data to matches
+                    for i, match in enumerate(matches):
+                        match["goals"] = match_goals[i]
 
-            return matches
+                return matches
+                
+            except requests.exceptions.RequestException as e:
+                retry_count += 1
+                if response.status_code == 429 and retry_count < max_retries:
+                    wait_time = retry_delay * (2 ** (retry_count - 1))  # Exponential backoff
+                    self.logger.warning(f"Rate limited (429). Retry {retry_count}/{max_retries} after {wait_time}s")
+                    if self.debug:
+                        self.console.print(f"[red]Rate limited (429). Retrying in {wait_time} seconds...[/red]")
+                    time.sleep(wait_time)
+                else:
+                    if self.debug:
+                        self.console.print(f"[red]Error fetching matches:[/red] {str(e)}")
+                    self.logger.error("Error fetching matches: %s", str(e), exc_info=True)
+                    break  # Exit the retry loop on non-rate limit errors or max retries
 
-        except Exception as e:
-            if self.debug:
-                self.console.print(f"[red]Error fetching matches:[/red] {str(e)}")
-            self.logger.error("Error fetching matches: %s", str(e), exc_info=True)
-            return []
+        # Return empty list if all retries failed
+        return []
 
     def get_matches_by_team(self, team_name: str, date: Optional[str] = None) -> List[Dict[str, Any]]:
         """Get matches for a specific team.
@@ -247,54 +284,110 @@ class FootballAPI:
             self.logger.info("Saved %d matches to the database", len(matches))
         return matches
 
-    def _get_goals_for_match(self, fixture_id: int) -> List[Dict[str, Any]]:
-        """Get goal details for a specific match.
+    def _get_goals_for_match(self, match_id: int) -> List[Dict[str, Any]]:
+        """Get goal details for a specific match with improved rate limiting.
 
         Args:
-            fixture_id: The API's unique identifier for the fixture.
+            match_id: The API's unique identifier for the match.
 
         Returns:
             A list of dictionaries containing goal data.
         """
-        url = f"{self.base_url}/fixtures/events"
-        params = {"fixture": fixture_id}
+        url = f"{self.base_url}/matches/{match_id}"
+        
+        # Add retry logic for handling rate limits
+        max_retries = 3
+        retry_count = 0
+        retry_delay = 5  # Start with 5 seconds
 
-        try:
-            self._rate_limit_check()
-            if self.debug:
-                self.console.print(f"[dim]Fetching goals for fixture {fixture_id}...[/dim]")
+        while retry_count < max_retries:
+            try:
+                self._rate_limit_check()
+                if self.debug:
+                    self.console.print(f"[dim]Fetching goals for match {match_id}...[/dim]")
 
-            response = requests.get(url, headers=self.headers, params=params)
-            response.raise_for_status()
-            data = response.json()
+                response = requests.get(url, headers=self.headers)
+                
+                # Handle rate limiting with exponential backoff
+                if response.status_code == 429:
+                    retry_count += 1
+                    if retry_count < max_retries:
+                        wait_time = retry_delay * (2 ** (retry_count - 1))  # Exponential backoff
+                        self.logger.warning(f"Rate limited (429). Retry {retry_count}/{max_retries} after {wait_time}s")
+                        if self.debug:
+                            self.console.print(f"[red]Rate limited (429). Retrying in {wait_time} seconds...[/red]")
+                        time.sleep(wait_time)
+                        continue
+                
+                response.raise_for_status()
+                data = response.json()
 
-            if self.debug:
-                self.console.print(f"\n[cyan]Goal Events for fixture {fixture_id}:[/cyan]")
-                for event in data["response"]:
-                    if event["type"] == "Goal" and event["detail"] != "Missed Penalty":
-                        self.console.print(
-                            f"[yellow]{event['time']['elapsed']}'[/yellow] "
-                            f"{event['player']['name']} ({event['team']['name']}) - "
-                            f"[dim]{event.get('detail', 'Goal')}[/dim]"
-                        )
+                goals = []
+                for goal in data.get("goals", []):
+                    scorer = goal.get("scorer", {}).get("name", "Unknown")
+                    team_id = goal.get("team", {}).get("id")
+                    minute = goal.get("minute")
+                    
+                    # Determine team name
+                    team_name = None
+                    if team_id == data.get("homeTeam", {}).get("id"):
+                        team_name = data.get("homeTeam", {}).get("name")
+                    else:
+                        team_name = data.get("awayTeam", {}).get("name")
+                    
+                    goals.append({
+                        "team": team_name,
+                        "player": scorer,
+                        "minute": minute,
+                        "type": goal.get("type", "REGULAR")
+                    })
 
-            goals = []
-            for event in data["response"]:
-                if event["type"] == "Goal" and event["detail"] != "Missed Penalty":
-                    goal = {
-                        "team": event["team"]["name"],
-                        "player": event["player"]["name"],
-                        "minute": event["time"]["elapsed"],
-                        "type": event.get("detail", "Goal")
-                    }
-                    goals.append(goal)
+                if self.debug and goals:
+                    self.console.print(f"[dim]Found {len(goals)} goals for match {match_id}[/dim]")
 
-            if self.debug and goals:
-                self.console.print(f"[dim]Found {len(goals)} goals for fixture {fixture_id}[/dim]")
+                return goals
+                
+            except requests.exceptions.RequestException as e:
+                retry_count += 1
+                if response.status_code == 429 and retry_count < max_retries:
+                    wait_time = retry_delay * (2 ** (retry_count - 1))  # Exponential backoff
+                    self.logger.warning(f"Rate limited (429). Retry {retry_count}/{max_retries} after {wait_time}s")
+                    if self.debug:
+                        self.console.print(f"[red]Rate limited (429). Retrying in {wait_time} seconds...[/red]")
+                    time.sleep(wait_time)
+                else:
+                    if self.debug:
+                        self.console.print(f"[red]Error fetching goals for match {match_id}:[/red] {str(e)}")
+                    self.logger.error("Error fetching goals for match %d: %s", match_id, str(e), exc_info=True)
+                    break  # Exit the retry loop on non-rate limit errors or max retries
 
-            return goals
-        except Exception as e:
-            if self.debug:
-                self.console.print(f"[red]Error fetching goals for match {fixture_id}:[/red] {str(e)}")
-            self.logger.error("Error fetching goals for match %d: %s", fixture_id, str(e), exc_info=True)
-            return []
+        # Return empty list if all retries failed
+        return []
+
+    def fetch_matches_by_date(self, date_str):
+        """
+        Fetch football matches for a specific date.
+        
+        Args:
+            date_str (str): Date string in format 'YYYY-MM-DD'
+            
+        Returns:
+            list: List of match dictionaries
+        """
+        self.logger.info(f"Fetching matches for date: {date_str}")
+        return self.get_matches(date_str)
+
+# Add this function to the module level (outside the FootballAPI class)
+def fetch_matches_for_date(date_str):
+    """
+    Fetch football matches for a specific date.
+    
+    Args:
+        date_str (str): Date string in format 'YYYY-MM-DD'
+        
+    Returns:
+        list: List of match dictionaries
+    """
+    # Create a temporary instance of FootballAPI to use its methods
+    api = FootballAPI()
+    return api.fetch_matches_by_date(date_str)
