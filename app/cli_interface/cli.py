@@ -12,7 +12,7 @@
     '.'._.:::._.'.'
       '-:::::::-'
 
-goAI_talk - Football Match Results Q&A Bot
+goAI_talk - Yesterday's Football Match Results Q&A Bot
 File: app/cli_interface/cli.py
 Author: Hosu Kim
 Created: 2025-03-15 20:01:20 UTC

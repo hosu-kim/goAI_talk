@@ -1,3 +1,28 @@
+"""Interperter and Encoding setup"""
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+'''
+          ___
+      .:::---:::.
+    .'--:     :--'.                      ___     ____   ______        __ __  
+   /.'   \   /   `.\      ____ _ ____   /   |   /  _/  /_  __/____ _ / // /__
+  | /'._ /:::\ _.'\ |    / __ `// __ \ / /| |   / /     / /  / __ `// // //_/
+  |/    |:::::|    \|   / /_/ // /_/ // ___ | _/ /     / /  / /_/ // // ,<   
+  |:\ .''-:::-''. /:|   \__, / \____//_/  |_|/___/    /_/   \__,_//_//_/|_|  
+   \:|    `|`    |:/   /____/                                                
+    '.'._.:::._.'.'
+      '-:::::::-'
+
+goAI_talk - Yesterday's Football Match Results Q&A Bot
+File: app/llm.py
+Author: Hosu Kim
+Created: 2025-03-14 11:15:03 UTC
+
+Description:
+    The QnAEngine class fetches yesterday's football match results and generates responses using OpenAI's GPT-3.5-turbo. 
+    It handles conversation history, token limits, and formats answers accordingly.
+'''
+
 import openai
 import config
 from app.database_manager.database import Database
