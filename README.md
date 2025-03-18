@@ -96,45 +96,16 @@ goAI_talk/
 ├── config.py                    # Configuration settings
 ├── main.py                      # Application entry point
 ├── requirements.txt             # Dependencies
-├── tests/                       # Test files
+├── tests/                       # Test file and api call test script.
+    ├── test_api.py
+	└── test_data.json
 ├── Dockerfile                   # Docker configuration
 └── README.md                    # This file
 ```
-## Docker Recommendations
-The included Dockerfile can be enhanced with the following improvements:
-```Dockerfile
-FROM python:3.10-slim
-
-# Create a non-root user
-RUN useradd -m appuser
-
-WORKDIR /app
-
-# Copy and install dependencies first (for better caching)
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application code
-COPY . .
-
-# Create data directory and set permissions
-RUN mkdir -p /app/data && chown -R appuser:appuser /app
-
-# Switch to non-root user
-USER appuser
-
-# Volume for storing database files
-VOLUME /app/data
-
-# Set environment variables
-ENV DB_PATH=/app/data/football_data.db
-# Note: API keys should be provided at runtime
-
-# Expose the web server port
-EXPOSE 8000
-
-# Run web interface by default (modified to match your application)
-CMD ["python3", "main.py", "--update"]
+## Test Mode
+Uses predefined data from tests/test_data.json instead of API calls.
+```bash
+python main.py --test
 ```
 ## Troubleshooting
 - No match data available: Run with the `--update` flag to fetch new data
