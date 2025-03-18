@@ -1,1 +1,23 @@
+# Environment variables and secrets
 .env
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Database
+*.db
+football_data.db
+
+# IDE settings
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Database files
+*.db
+app/database_manager/*.db
+
+# Logs
+*.log

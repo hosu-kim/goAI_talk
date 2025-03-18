@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>goAI Talk - Yesterday's Football Match Q&A Bot</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon"><i class="fas fa-futbol"></i></div>
+                <h1>goAI Talk - Yesterday's Football Match Q&A Bot</h1>
+            </div>
+            <div class="nav-links">
+                <a href="/examples"><i class="fas fa-lightbulb"></i> Example Questions</a>
+                <a href="/"><i class="fas fa-home"></i> Home</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <h2 class="title">Ask About Yesterday's Football Matches</h2>
+            <p class="subtitle">Get detailed information about scores, teams, leagues, and more</p>
+
+            <div class="info-bar">
+                <div class="info-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Match Date: {{ match_date.split('T')[0] if 'T' in match_date else match_date }}</span>
+                </div>
+                <div class="info-item">
+                    <i class="fas fa-list"></i>
+                    <span>Total Matches: {{ match_count }}</span>
+                </div>
+                <div class="info-item">
+                    <i class="fas fa-clock"></i>
+                    <span>Updated: {{ current_time }} UTC</span>
+                </div>
+            </div>
+
+            <form action="/ask" method="post">
+                <div class="input-group">
+                    <input type="text" name="question" class="search-input" placeholder="E.g., Which team had the biggest goal difference?" required 
+                    {% if question %}value="{{ question }}"{% elif prefill %}value="{{ prefill }}"{% endif %}>
+                    <button type="submit" class="search-button">
+                        <span class="button-icon"><i class="fas fa-search"></i></span>
+                        <span class="button-text">Ask Question</span>
+                    </button>
+                </div>
+            </form>
+            
+            <div class="examples-section">
+                <h3>Try asking about:</h3>
+                <div class="example-list">
+                    <div class="example-item"><i class="fas fa-question-circle"></i> What were all the match results from yesterday?</div>
+                    <div class="example-item"><i class="fas fa-question-circle"></i> Which teams kept a clean sheet?</div>
+                    <div class="example-item"><i class="fas fa-question-circle"></i> Show me all matches from the A-League</div>
+                </div>
+            </div>
+        </div>
+        
+        {% if answer %}
+        <div class="answer-card">
+            <div class="answer-header">
+                <i class="fas fa-comment-dots"></i> 
+                Your Question: {{ question }}
+            </div>
+            <div class="answer-content">
+                <div class="answer">{{ answer }}</div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="footer">
+            &copy; 2025 goAI Talk | Current time: {{ current_time }} UTC
+        </div>
+    </div>
+    
+    <script src="/static/scripts.js"></script>
+</body>
+</html>

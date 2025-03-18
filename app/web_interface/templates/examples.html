@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>goAI Talk - Example Questions</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon"><i class="fas fa-futbol"></i></div>
+                <h1>goAI Talk - Yesterday's Football Match Q&A Bot</h1>
+            </div>
+            <div class="nav-links">
+                <a href="/examples"><i class="fas fa-lightbulb"></i> Example Questions</a>
+                <a href="/"><i class="fas fa-home"></i> Home</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <h2 class="title">Example Questions</h2>
+            <p class="subtitle">Click on any question to try it out</p>
+            
+            {% for category, questions in examples.items() %}
+                <div class="example-category">{{ category }}</div>
+                <div class="example-list">
+                    {% for question in questions %}
+                        <div class="example-item" data-question="{{ question }}">
+                            <i class="fas fa-question-circle"></i> {{ question }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            
+            <div class="info-bar" style="margin-top: 20px;">
+                <div class="info-item">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Click on any question to try it in the main interface</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            &copy; 2025 goAI Talk | Current time: {{ current_time }} UTC
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Make examples clickable
+            const exampleItems = document.querySelectorAll('.example-item');
+            exampleItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const questionText = this.getAttribute('data-question');
+                    window.location.href = `/?prefill=${encodeURIComponent(questionText)}`;
+                });
+            });
+        });
+    </script>
+</body>
+</html>
