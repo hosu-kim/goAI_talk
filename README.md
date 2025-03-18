@@ -22,7 +22,10 @@ goAI Talk is an interactive Football Match Results Q&A Bot that provides detaile
 ### Local Setup
 1. Clone the repository:
 ```bash
-git clone https://github.com/hosu-kim/goAI_talk.git
+git clone https://gitlab.com/adrian.heldes/hosu-assignment.git
+```
+```bash
+cd hosu-assignment
 ```
 ```bash
 cd goAI_talk
@@ -38,11 +41,7 @@ docker build -t goai-talk .
 ```
 2. Run the container:
 ```bash
-docker run -p 8000:8000 \
-  -e API_FOOTBALL_KEY=your_football_api_key_here \
-  -e OPENAI_API_KEY=your_openai_api_key_here \
-  -v goai-data:/app/data \
-  goai-talk
+docker run -it -p 8000:8000 -v goai-data:/app/data goai-talk
 ```
 ## Usage
 ### Command Line Interface
@@ -55,6 +54,7 @@ When prompted, select option 1 for CLI interface.
 - Type your question about yesterday's football matches
 - `help` - Display example questions
 - `info` - Show information about available data
+- `update` - Update database with latest match data
 - `exit` or `quit` - End the session
 ### Web Interface
 Run the application and choose the web interface option:
@@ -96,14 +96,14 @@ goAI_talk/
 ├── config.py                    # Configuration settings
 ├── main.py                      # Application entry point
 ├── requirements.txt             # Dependencies
-├── tests/                       # Test file and api call test script.
-    ├── test_api.py
-	└── test_data.json
+├── tests/                       # Test files
+│   ├── test_api.py
+│   └── test_data.json
 ├── Dockerfile                   # Docker configuration
 └── README.md                    # This file
 ```
 ## Test Mode
-Uses predefined data from tests/test_data.json instead of API calls.
+Uses predefined data from tests/test_data.json instead of API calls
 ```bash
 python main.py --test
 ```
