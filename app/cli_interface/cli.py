@@ -12,7 +12,7 @@
     '.'._.:::._.'.'
       '-:::::::-'
 
-goAI_talk - Yesterday's Football Match Results Q&A Bot
+goAI_talk - Football Match Results Q&A Bot
 File: app/cli_interface/cli.py
 Author: Hosu Kim
 Created: 2025-03-15 20:01:20 UTC
@@ -22,22 +22,27 @@ Description:
     Provides an interactive Q&A experience with rich text formatting and visual feedback.
 '''
 
+# Rich Library Imports for formatted console outputs
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
+from rich.align import Align
+# Rich Library Imports for Prompt and Progress Indications
 from rich.prompt import Prompt
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.align import Align
-from app.llm import QnAEngine
+
+from typing import List, Dict, Set, Optional, Any, Union
 from app.database_manager.database import Database
 from datetime import datetime
+from config import settings, Settings
+from app.llm import QnAEngine
 
 class CLI:
     """Command Line Interface for the goAI Talk application.
-    
+
     This class handles the interactive command-line user interface,
     including user input, formatted output, and interaction with the QnA engine.
-    
+
     Attributes:
         qna_engine: An istance of QnAEngine for processing questions.
         console: Rich Console instance for forammted terminal output.
@@ -45,27 +50,37 @@ class CLI:
         db: Datebase instance for accessing match data.
         match_data: Cached match data from the database.
     """
-    def __init__(self):
-        """Initialize the CLI with required components and load match data."""
-        self.qna_engine = QnAEngine()
-        self.console = Console()
+    qna_engine: QnAEngine
+    console: Console
+    current_date: str
+    db: Database
+    match_data: Optional[List[Dict[str, Any]]]
+
+    def __init__(self, config: Settings) -> None:
+        """Initialize the CLI with required components and load match data.
+
+        Args:
+            config (Settings): Application configuration settings.
+        """
         self.current_date = datetime.today().strftime("%Y-%m-%d")
-        self.db = Database()
+        self.db = Database(config)
         self.match_data = None
         self._load_match_data()
+        self.qna_engine = QnAEngine(config)
+        self.console = Console()
         
-    def _load_match_data(self):
+    def _load_match_data(self) -> None:
         """Load match data from database to get context information.
         
            If an error occurs during data loading, a warning is displayed.
         """
         try:
-            self.match_data = self.db.get_yesterdays_matches_from_db()
+            self.match_data = self.db.retrieve_yesterdays_matches_from_db()
             # Status will always be "Match Finished" for all matches
         except Exception as e:
             self.console.print(f"[yellow]Warning: Could not load match data: {str(e)}[/yellow]")
         
-    def _get_leagues_from_data(self):
+    def _get_leagues_from_data(self) -> List[str]:
         """Extract unique leagues from match data.
         
            Returns:
@@ -74,15 +89,15 @@ class CLI:
         if not self.match_data:
             return ["(Data not available)"]
         
-        leagues = set()
+        leagues: Set[str] = set()
         for match in self.match_data:
             if 'league' in match and match['league']:
                 leagues.add(f"{match['league']} ({match['country']})")
         
         return sorted(list(leagues))
         
-    def _get_header(self):
-        """Get formatted header with current tim
+    def _get_header(self) -> str:
+        """Get formatted header with current time
            Returns:
                str: Rich text formatted header for display.
         """
@@ -92,7 +107,7 @@ class CLI:
         )
         return header
 
-    def _display_welcome(self):
+    def _display_welcome(self) -> None:
         """Display welcome message with styled header.
 
            Shows information about the application and available commands.
@@ -107,7 +122,8 @@ class CLI:
         # Get match date from data if available
         match_date = "yesterday's completed matches"
         if self.match_data and len(self.match_data) > 0 and 'date' in self.match_data[0]:
-            match_date = f"completed matches from {self.match_data[0]['date']}"
+            date_part = self.match_data[0]['date'].split('T')[0]
+            match_date = f"completed matches from {date_part}"
         
         # Create welcome message panel
         welcome_panel = Panel(
@@ -122,12 +138,12 @@ class CLI:
         self.console.print(welcome_panel)
         self.console.print()  # Empty line for spacing
 
-    def _display_question_guide(self):
+    def _display_question_guide(self) -> None:
         """Display examples of questions users can ask about football matches/
 
            Organizes example questions by category in a formatted panel.
         """
-        categories = {
+        categories: Dict[str, List[str]] = {
                 "Match Results": [
                     "What were yesterday's match results?",
                     "How many matches ended in a home win?",
@@ -172,7 +188,7 @@ class CLI:
             padding=(1, 2)
         ))
 
-    def _display_data_context(self):
+    def _display_data_context(self) -> None:
         """Display information about the available data the bot can answer about.
 
            Shows match date, total matches, available leagues, and date types.
@@ -187,7 +203,7 @@ class CLI:
         if self.match_data and len(self.match_data) > 0 and 'date' in self.match_data[0]:
             match_date = self.match_data[0]['date']
             
-        match_count = len(self.match_data) if self.match_data else "Unknown"
+        match_count: Union[int, str] = len(self.match_data) if self.match_data else "Unknown"
         
         context = (
             f"[bold]Match Data:[/bold] {match_date}\n"
@@ -210,7 +226,7 @@ class CLI:
             padding=(1, 2)
         ))
 
-    def _get_user_input(self):
+    def _get_user_input(self) -> str:
         """Get styled user input/
 
         Returns:
@@ -218,7 +234,7 @@ class CLI:
         """
         return Prompt.ask("\n[bold green]Question[/bold green]")
 
-    def _display_answer(self, answer):
+    def _display_answer(self, answer: str) -> None:
         """Display styled answer in a panel.
 
            Args:
@@ -231,7 +247,7 @@ class CLI:
             padding=(1, 2)
         ))
 
-    def _format_error(self, message):
+    def _format_error(self, message: str) -> Panel:
         """Format error messages.
 
            Args:
@@ -246,7 +262,7 @@ class CLI:
             padding=(1, 2)
         )
 
-    def run(self):
+    def run(self) -> None:
         """Run the CLI interface with rich formatting.
 
            Main loop that handles user interaction, command processing,
@@ -288,7 +304,7 @@ class CLI:
                     transient=True
                 ) as progress:
                     progress.add_task("generating", total=None)
-                    answer = self.qna_engine.get_answer(question)
+                    answer = str(self.qna_engine.get_answer(question))
 
                 # Display the answer
                 self._display_answer(answer)
@@ -299,12 +315,12 @@ class CLI:
             # Add a separator line
             self.console.print("\n" + "═" * self.console.width + "\n")
 
-def main():
+def main() -> None:
     """Main entry point for the CLI application.
 
        Initializes and runs the CLI, handling any uncaught exceptions.
     """
-    cli = CLI()
+    cli = CLI(settings)
     try:
         cli.run()
     except KeyboardInterrupt:

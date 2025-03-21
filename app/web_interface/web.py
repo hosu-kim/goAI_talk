@@ -24,40 +24,45 @@ Description:
     with football match Q&A functionality.
 '''
 
+import os
+import sys
+import uvicorn
+from typing import Dict, List, Optional, Any, Union
+from datetime import datetime
+
+# Add parent dir to sys.path to import other modules in the other dirs
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
 from fastapi import FastAPI, Request, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, RedirectResponse
-import uvicorn
-import os
-import sys
-from app.llm import QnAEngine
+
+from config import settings
 from app.database_manager.database import Database
-from datetime import datetime
+from app.llm import QnAEngine
 
-# Add parent directory to sys.path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-app = FastAPI(title="goAI Talk")
+app: FastAPI = FastAPI(title="goAI Talk")
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
 app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
 
-qna_engine = QnAEngine()
-db = Database()
+qna_engine: QnAEngine = QnAEngine(settings)
+db: Database = Database(settings)
 
 # Format current time in the user time zone.
-CURRENT_TIME = datetime.today().strftime("%Y-%m-%d %H:%M:%S")
+CURRENT_TIME: str = datetime.today().strftime("%Y-%m-%d %H:%M:%S")
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request, prefill: str = None):
+async def index(request: Request, prefill: Optional[str] = None) -> HTMLResponse:
     """Renders the main page of the application."""
-    matches = db.get_yesterdays_matches_from_db(max_matches=1)
-    match_date = "yesterday"
-    match_count = 0
+    matches: List[Dict[str, Any]] = db.retrieve_yesterdays_matches_from_db(max_matches=1)
+    match_date: str = "yesterday"
+    match_count: int = 0
     
     if matches and len(matches) > 0:
         match_date = matches[0]['date']
-        all_matches = db.get_yesterdays_matches_from_db()
+        all_matches: List[Dict[str, Any]] = db.retrieve_yesterdays_matches_from_db()
         match_count = len(all_matches)
     
     return templates.TemplateResponse(
@@ -71,23 +76,23 @@ async def index(request: Request, prefill: str = None):
         }
     )
 
-@app.post("/ask", response_class=HTMLResponse)
-async def ask(request: Request, question: str = Form(...)):
+@app.post("/ask", response_class=HTMLResponse, response_model=None)
+async def ask(request: Request, question: str = Form(...)) -> Union[HTMLResponse, RedirectResponse]:
     """Processes user questions about football matches."""
     if not question.strip():
         return RedirectResponse(url="/", status_code=303)
         
-    matches = db.get_yesterdays_matches_from_db(max_matches=1)
-    match_date = "yesterday"
-    match_count = 0
+    matches: List[Dict[str, Any]] = db.retrieve_yesterdays_matches_from_db(max_matches=1)
+    match_date: str = "yesterday"
+    match_count: int = 0
     
     if matches and len(matches) > 0:
         match_date = matches[0]['date']
-        all_matches = db.get_yesterdays_matches_from_db()
+        all_matches: List[Dict[str, Any]] = db.retrieve_yesterdays_matches_from_db()
         match_count = len(all_matches)
     
     try:
-        answer = qna_engine.get_answer(question)
+        answer: str = qna_engine.get_answer(question)
     except Exception as e:
         answer = f"Sorry, I encountered an error. Please try asking another question."
     
@@ -104,9 +109,9 @@ async def ask(request: Request, question: str = Form(...)):
     )
 
 @app.get("/examples", response_class=HTMLResponse)
-async def examples(request: Request):
+async def examples(request: Request) -> HTMLResponse:
     """Provides example questions based on available match data."""
-    examples = {
+    examples: Dict[str, List[str]] = {
         "Match Results": [
             "What were yesterday's match results?",
             "How many matches ended in a home win?",
@@ -144,11 +149,11 @@ async def examples(request: Request):
     )
 
 @app.get("/favicon.ico")
-async def favicon():
+async def favicon() ->RedirectResponse:
     """Handles favicon.ico requests."""
     return RedirectResponse(url="/static/favicon.ico")
 
-def run_server(host="0.0.0.0", port=8000):
+def run_server(host: str="0.0.0.0", port: int = 8000) -> None:
     """Starts the FastAPI web server."""
     uvicorn.run(app, host=host, port=port)
 

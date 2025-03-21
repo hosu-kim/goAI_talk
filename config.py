@@ -1,20 +1,40 @@
-import os
-from dotenv import load_dotenv
 
-# Load .env file
-load_dotenv()
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+'''
+          ___
+      .:::---:::.
+    .'--:     :--'.                      ___     ____   ______        __ __  
+   /.'   \   /   `.\      ____ _ ____   /   |   /  _/  /_  __/____ _ / // /__
+  | /'._ /:::\ _.'\ |    / __ `// __ \ / /| |   / /     / /  / __ `// // //_/
+  |/    |:::::|    \|   / /_/ // /_/ // ___ | _/ /     / /  / /_/ // // ,<   
+  |:\ .''-:::-''. /:|   \__, / \____//_/  |_|/___/    /_/   \__,_//_//_/|_|  
+   \:|    `|`    |:/   /____/                                                
+    '.'._.:::._.'.'
+      '-:::::::-'
 
-# API-Football url
-API_FOOTBALL_URL = "https://v3.football.api-sports.io"
+goAI_talk - Yesterday's Football Match Results Q&A Bot
+File: config.py
+Author: Hosu Kim
+Created: 2025-03-19 16:42:29 UTC
 
-# API keys
-API_FOOTBALL_KEY = os.getenv("API_FOOTBALL_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+Description:
+    Configuration settings for goAI_talk using Pydantic for type validation
+    and environment variable management.
+'''
 
-# Database settings
-DB_PATH = os.getenv("DB_PATH", "football_data.db")
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import SecretStr
 
-# Applicatin constants
-MATCH_LIMIT = 300
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 
-MAX_CONVERSATION_HISTORY = 5
+    api_football_url: str = "https://v3.football.api-sports.io"
+    api_football_key: SecretStr
+    openai_api_key: SecretStr
+    db_path: str = "app/database_manager/football_data.db"
+
+    match_limit: int = 300
+    max_conversation_history: int = 5
+
+settings = Settings()

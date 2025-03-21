@@ -12,7 +12,7 @@
     '.'._.:::._.'.'
       '-:::::::-'
 
-goAI_talk - Yesterday's Football Match Results Q&A Bot
+goAI_talk - Football Match Results Q&A Bot
 File: app/database.py
 Author: Hosu Kim
 Created: 2025-03-15 19:02:33 UTC
@@ -24,12 +24,13 @@ Description:
 
 import sqlite3
 import json
-
+from typing import List, Dict, Any, Optional, Union
+from config import Settings
 
 class Database:
     """A class to handle all database operations for football match data.
 
-    This class provides methods to create tables, save match data, and retrieve
+    This class provides methods to create tables, save match data and retrieve
     match information from a SQLite database. It supports both production and
     test environments.
 
@@ -37,22 +38,24 @@ class Database:
         db_path (str): Path to the SQLite database file.
         use_test_data (bool): Flag to indicate if test data should be used.
     """
-    def __init__(self, db_path="app/database_manager/football_data.db", use_test_data=False):
+    db_path: str
+    use_test_data: bool
+    def __init__(self, config: Settings, use_test_data=False) -> None:
         """Initialize the Database instance.
 
         Args:
-            db_path (str, optional): Path to the SQLite database file.
-                                   Defaults to "football_data.db".
+            db_path (str): Path to the SQLite database file.
+
             use_test_data (bool, optional): Whether to use test data mode.
                                           Defaults to False.
         """
 
-        self.db_path = db_path
-        
+        self.db_path = config.db_path
+
         self.use_test_data = use_test_data
         self._create_tables()
 
-    def _create_tables(self):
+    def _create_tables(self) -> None:
         """Create necessary database tables if they don't exist.
 
         Creates a 'matches' table with the following columns:
@@ -67,7 +70,7 @@ class Database:
             - goals: JSON string containing goal details
         """
         conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        cursor: sqlite3.Cursor = conn.cursor()
 
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS matches (
@@ -86,7 +89,7 @@ class Database:
         conn.commit()
         conn.close()
 
-    def save_matches(self, matches):
+    def save_matches(self, matches: List[Dict[str, Any]]) -> None:
         """Save or update match data in the database.
 
         Args:
@@ -104,12 +107,12 @@ class Database:
             Uses INSERT OR REPLACE to handle both new entries and updates.
             Goal information is stored as a JSON string in the database.
         """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        conn: sqlite3.Connection = sqlite3.connect(self.db_path)
+        cursor: sqlite3.Cursor = conn.cursor()
 
         for match in matches:
             # Convert goals list to JSON string for storage
-            goals_json = json.dumps(match.get('goals', []))
+            goals_json: str = json.dumps(match.get('goals', []))
 
             # Insert or update match data
             cursor.execute('''
@@ -131,7 +134,7 @@ class Database:
         conn.commit()
         conn.close()
 
-    def get_yesterdays_matches_from_db(self, max_matches=None):
+    def retrieve_yesterdays_matches_from_db(self, max_matches: Optional[int] = None) -> List[Dict[str, Any]]:
         """Retrieve yesterday's match data from database.
 
         Fetches matches from the most recent retrieved_date in the database.
@@ -150,10 +153,11 @@ class Database:
             sqlite3.Error: If there's an error accessing the database.
                          Error is logged and empty list is returned.
         """
+        conn: Optional[sqlite3.Connection] = None
         try:
             conn = sqlite3.connect(self.db_path)
             conn.row_factory = sqlite3.Row  # Enable row factory for dict-like access
-            cursor = conn.cursor()
+            cursor: sqlite3.Cursor = conn.cursor()
 
             # Query with optional limit
             if max_matches:
@@ -162,9 +166,9 @@ class Database:
                 cursor.execute('SELECT * FROM matches')
 
             # Process results and parse JSON goals data
-            matches = []
+            matches: List[Dict[str, Any]] = []
             for row in cursor.fetchall():
-                match = dict(row)
+                match: Dict[str, Any] = dict(row)
                 # Convert JSON goals string back to Python object
                 if match['goals']:
                     match['goals'] = json.loads(match['goals'])

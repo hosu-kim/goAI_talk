@@ -1,4 +1,3 @@
-"""Interperter and Encoding setup"""
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 '''
@@ -23,10 +22,11 @@ Description:
     It handles conversation history, token limits, and formats answers accordingly.
 '''
 
-import openai
-import config
+from typing import List, Dict, Any, Union, Optional
+from config import Settings
 from app.database_manager.database import Database
-import os
+from openai import OpenAI
+from openai.types.chat import ChatCompletion
 
 class QnAEngine:
     """A Question-Answering engine for yesterday football match results using OpenAI's API.
@@ -36,68 +36,72 @@ class QnAEngine:
     token limitations while formatting response appropriately.
 
     Attributes:
+        config (Settings): configuration settings object.
         client (openai.Client): OpenAI API client instance.
         db (Database): Database instance for match data access.
         max_token_limit (int): Maximum tokens allowed in API context (16,385 for GPT-3.5).
         match_limit (int): Maximum number of matches to include in context.
-        conversation_history (list): List of prior conversation messages
+        conversation_history (List[Dict[str, str]]): List of prior conversation messages
     """
-    def __init__(self, match_limit=config.MATCH_LIMIT):
+    config: Settings
+    client: OpenAI
+    db: Database
+    max_token_limit: int
+    match_limit: int
+    conversation_history: List[Dict[str, str]]
+
+    def __init__(self, config: Settings) -> None:
         """Initialize the QnAEngine with configuration parameters.
 
         Args:
             match_limit (int, optional): Maximum number of matches to inclue in context.
-                                       Defaults to value in config.MATCH_LIMIT.
+                                       Defaults to value in settings.match_num_limit.
         """
-        db_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            'database_manager',
-            'football_data.db'
-        )
-        self.client = openai.Client(api_key=config.OPENAI_API_KEY)
-        self.db = Database(db_path=db_path)
+        self.config = config
+        self.client = OpenAI(api_key=self.config.openai_api_key.get_secret_value())
+        self.db = Database(self.config)
         self.max_token_limit = 16385 # GTP-3.5-turbo context window size
-        self.match_limit = match_limit
+        self.match_limit = self.config.match_limit
         self.conversation_history = []
 
-    def get_answer(self, question):
+    def get_answer(self, question: str) -> Union[str, List]:
         """Generate an answer to the user's question about football matches.
 
         Args:
             question (str): User's question about football matches
 
         Returns:
-            str: Generated answer or error message
+            Union[str, List]: Generated answer string or empty list if an error occurs
         """
-        matches = self.db.get_yesterdays_matches_from_db()
-        
+        matches: List[Dict[str, Any]] = self.db.retrieve_yesterdays_matches_from_db()
+
         if not matches:
             return "Sorry, there is no match data available at the moment."
 
-        limited_matches = self._limit_matches_by_size(matches)
-        
+        limited_matches: List[Dict[str, Any]] = self._limit_matches_by_size(matches)
+
         # Update conversation history
         self.conversation_history.append({"role": "user", "content": question})
         
         # Keep recent converations based on config limit
-        if len(self.conversation_history) > config.MAX_CONVERSATION_HISTORY * 2:
+        if len(self.conversation_history) > self.config.max_conversation_history * 2:
             self.conversation_history = self.conversation_history[
-                -(config.MAX_CONVERSATION_HISTORY * 2):
+                -(self.config.max_conversation_history * 2):
             ]
 
         # Prepare messages for API
-        messages = [
+        messages: List[Dict[str, str]] = [
             {"role": "system", "content": self._create_prompt(limited_matches)},
             *self.conversation_history
         ]
 
         try:
-            response = self.client.chat.completions.create(
+            response: ChatCompletion = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=messages
             )
-            answer = response.choices[0].message.content
-            
+            answer: str = response.choices[0].message.content
+
             # Store assistant's response
             self.conversation_history.append({
                 "role": "assistant",
@@ -111,8 +115,9 @@ class QnAEngine:
             print(f"Error Message: {str(e)}")
             print(f"Error Details: {e.__dict__}")
             return []
-    def _retry_with_less_data(self, question, matches):
-        """Retry answer generation with reuced match data.
+
+    def _retry_with_less_data(self, question: str, matches: List[Dict[str, Any]]) -> str:
+        """Retry answer generation with reduced match data.
 
         Args:
             question (str): Original question
@@ -122,16 +127,16 @@ class QnAEngine:
             str: Generated answer or error message
         """
         try:
-            reduced_matches = self._limit_matches_by_size(
+            reduced_matches: List[Dict[str, Any]] = self._limit_matches_by_size(
                 matches,
                 self.match_limit - 10
             )
-            messages = [
-                {"role": "system", "content": self._create_prompt(question, reduced_matches)},
+            messages: List[Dict[str, str]] = [
+                {"role": "system", "content": self._create_prompt(reduced_matches)},
                 {"role": "user", "content": question}
             ]
 
-            response = self.client.chat.completions.create(
+            response: ChatCompletion = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=messages
             )
@@ -139,29 +144,30 @@ class QnAEngine:
         except Exception as e:
             return f"Failed to generate answer: {str(e)}"
 
-    def _limit_matches_by_size(self, matches):
+    def _limit_matches_by_size(self, matches: List[Dict[str, Any]], limit: Optional[int] = None) -> List[Dict[str, Any]]:
         """Limit the number of matches to process.
 
         Args:
-            matches (list): List of match dictionaries
+            matches (List[Dict[str, Any]]): List of match dictionaries
+            limit (Optional[int]): Custom limit to use, defaults to self.match_limit if None
 
         Returns:
-            list: Limited list of matches based on self.match_limit
+            List[Dict[str, Any]]: Limited list of matches based on self.match_limit or provided limit
         """
-        return matches[:self.match_limit]
+        limit_to_use: int = limit if limit is not None else self.match_limit
+        return matches[:limit_to_use]
 
-    def _create_prompt(self, matches):
+    def _create_prompt(self, matches: List[Dict[str, Any]]) -> str:
         """Create system prompt for the LLM.
 
         Args:
-            matches (list): List of match dictionaries containing match information
-
+            matches (List[Dict[str, Any]]): List of match dictionaries containing match information
         Returns:
             str: Formatted system prompt with match data
         """
-        match_count = len(matches)
-        
-        prompt = f"""You are a friendly and knowledgeable yesterday's football match results assistant.
+        match_count: int = len(matches)
+
+        prompt: str = f"""You are a friendly and knowledgeable yesterday's football match results assistant.
                      Your role is to provide clear, properly formatted, and detailed information about yesterday's football matches.
                      You should answer in the same language as the user's question.
 
@@ -188,6 +194,6 @@ class QnAEngine:
         for match in matches:
             prompt += f"""
             {match['league']} ({match['country']}):
-            {match['home_team']} {match['home_score']} - {match['away_score']} {match['away_team']}
+            {match['home_team']} {match['home_score']} : {match['away_score']} {match['away_team']}
             """
         return prompt
