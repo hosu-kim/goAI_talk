@@ -136,7 +136,7 @@ python3 main.py --log-console
 ## Combined Options
 Options can be combined as needed:
 ```bash
-python3 main.py --debg --log-console --test
+python3 main.py --debug --log-console --test
 ```
 ## Troubleshooting
 - No match data available: Run with the `--update` flag to fetch new data
