@@ -10,8 +10,10 @@ goAI Talk is an interactive Football Match Results Q&A Bot that provides detaile
 	- League information
 	- Venue details
 	- Goal details
+	- Country information
 - **Rich Text Formatting**: Clean, structured responses with proper alignment
 - **Example Questions**: Built-in question suggestions to help users get started
+- **Comprehensive Logging**: Detailed logs for debugging and monitoring
 ## Prerequisites
 - Python 3.10 or higher
 - API credentials:
@@ -22,10 +24,7 @@ goAI Talk is an interactive Football Match Results Q&A Bot that provides detaile
 ### Local Setup
 1. Clone the repository:
 ```bash
-git clone https://gitlab.com/adrian.heldes/hosu-assignment.git
-```
-```bash
-cd hosu-assignment
+git clone https://github.com/hosu-kim/goAI_talk.git
 ```
 ```bash
 cd goAI_talk
@@ -82,18 +81,35 @@ python main.py --update
 ```code
 goAI_talk/
 ├── app/
+│   ├── __init__.py              # Package initialization
 │   ├── api.py                   # Football API interaction
 │   ├── cli_interface/           # Command-line interface
+│   │   ├── __init__.py
 │   │   └── cli.py
+│   ├── config/                  # Configuration files
+│   │   ├── __init__.py
+│   │   └── example_questions.py # Example questions for users
 │   ├── database_manager/        # Database operations
 │   │   ├── database.py
 │   │   └── football_data.db     # SQLite database
+│   ├── domain/                  # Domain models
+│   │   └── domain.py            # Contains Match and other domain classes
+│   ├── exceptions.py            # Custom exceptions
 │   ├── llm.py                   # LLM integration for Q&A
+│   ├── logging_config.py        # Logging configuration
+│   ├── models.py                # Data models
 │   └── web_interface/           # Web interface
+│       ├── __init__.py
 │       ├── static/              # CSS and JavaScript
+│       │   ├── scripts.js
+│       │   └── styles.css
 │       ├── templates/           # HTML templates
+│       │   ├── examples.html
+│       │   └── index.html
 │       └── web.py
 ├── config.py                    # Configuration settings
+├── logs/                        # Log file directory
+│   └── goal_talk*.log           # Log files
 ├── main.py                      # Application entry point
 ├── requirements.txt             # Dependencies
 ├── tests/                       # Test files
@@ -107,7 +123,23 @@ Uses predefined data from tests/test_data.json instead of API calls
 ```bash
 python main.py --test
 ```
+## Debug Mode
+Enablee verbose logging for debugging
+```bash
+python3 main.py --debug
+```
+## Console Logging
+Display logs in the console (by default logs are only saved to files)
+```bash
+python3 main.py --log-console
+```
+## Combined Options
+Options can be combined as needed:
+```bash
+python3 main.py --debg --log-console --test
+```
 ## Troubleshooting
 - No match data available: Run with the `--update` flag to fetch new data
 - API connection issues: Verify your internet connection and API keys
 - Database errors: Check if the database file exists and has write permissions
+- Log files: Check logs/ directory for detailed application logs

@@ -27,6 +27,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import SecretStr
 
 class Settings(BaseSettings):
+    """Application configuration settings loaded from environment variables.
+
+    Use Pydantic BaseSettings to load values from .env file and environment variables.
+    Secret values are wrapped with SecretStr for better security handling.
+    """
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 
     api_football_url: str = "https://v3.football.api-sports.io"
@@ -34,7 +39,7 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr
     db_path: str = "app/database_manager/football_data.db"
 
-    match_limit: int = 300
-    max_conversation_history: int = 5
+    match_limit: int = 300 # Maximum number of matches to process at once
+    max_conversation_history: int = 5 # Number of conversation turns to retain
 
 settings = Settings()

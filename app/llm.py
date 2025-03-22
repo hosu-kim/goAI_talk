@@ -22,27 +22,21 @@ Description:
     It handles conversation history, token limits, and formats answers accordingly.
 '''
 
-from typing import List, Dict, Any, Union, Optional
+from typing import List, Dict, Optional
 from config import Settings
+import logging
 from app.database_manager.database import Database
 from openai import OpenAI
 from openai.types.chat import ChatCompletion
+from app.domain.domain import Match
+from app.exceptions import DataProcessingError, APIConnectionError
+
+
+# Get a logger for this module
+logger = logging.getLogger(__name__)
 
 class QnAEngine:
-    """A Question-Answering engine for yesterday football match results using OpenAI's API.
-
-    This class handles the interaction with OpenAI's API to generate responses
-    about yesterday's football match results. It maintains conversation history and handles
-    token limitations while formatting response appropriately.
-
-    Attributes:
-        config (Settings): configuration settings object.
-        client (openai.Client): OpenAI API client instance.
-        db (Database): Database instance for match data access.
-        max_token_limit (int): Maximum tokens allowed in API context (16,385 for GPT-3.5).
-        match_limit (int): Maximum number of matches to include in context.
-        conversation_history (List[Dict[str, str]]): List of prior conversation messages
-    """
+    """A Question-Answering engine for yesterday football match results using OpenAI's API."""
     config: Settings
     client: OpenAI
     db: Database
@@ -50,122 +44,152 @@ class QnAEngine:
     match_limit: int
     conversation_history: List[Dict[str, str]]
 
-    def __init__(self, config: Settings) -> None:
-        """Initialize the QnAEngine with configuration parameters.
-
-        Args:
-            match_limit (int, optional): Maximum number of matches to inclue in context.
-                                       Defaults to value in settings.match_num_limit.
-        """
+    def __init__(self, config: Settings, db: Database) -> None:
+        """Initialize the QnAEngine with configuration and an injected Database instance."""
         self.config = config
         self.client = OpenAI(api_key=self.config.openai_api_key.get_secret_value())
-        self.db = Database(self.config)
+        self.db = db
         self.max_token_limit = 16385 # GTP-3.5-turbo context window size
         self.match_limit = self.config.match_limit
         self.conversation_history = []
+        logger.info(f"QnAEngine initialized with match_limit={self.match_limit}")
 
-    def get_answer(self, question: str) -> Union[str, List]:
-        """Generate an answer to the user's question about football matches.
+    def get_answer(self, question: str) -> str:
+        """
+        Generate an answer to the user's question regarding football matches.
 
         Args:
-            question (str): User's question about football matches
-
+            question (str): The user's question.
         Returns:
-            Union[str, List]: Generated answer string or empty list if an error occurs
+            str: The generated answer.
+        Raises:
+            DataProcessingError: If there is no match data or an error retrieving data.
+            APIConnectionError: If there is an error connecting to the OpenAI API.
         """
-        matches: List[Dict[str, Any]] = self.db.retrieve_yesterdays_matches_from_db()
+        logger.info(f"Processing question: '{question}'")
+        try:
+            matches: List[Match] = self.db.retrieve_yesterdays_matches_from_db()
+            if not matches:
+                error_msg = "No match data available"
+                logger.error(error_msg)
+                return DataProcessingError(error_msg)
 
-        if not matches:
-            return "Sorry, there is no match data available at the moment."
+            limited_matches: List[Match] = self._limit_matches_by_size(matches)
+            logger.debug(f"Using {len(limited_matches)} matches for answering")
 
-        limited_matches: List[Dict[str, Any]] = self._limit_matches_by_size(matches)
+            # Update conversation history
+            self.conversation_history.append({"role": "user", "content": question})
+            logger.debug(f"conversation history size: {len(self.conversation_history)}")
 
-        # Update conversation history
-        self.conversation_history.append({"role": "user", "content": question})
-        
-        # Keep recent converations based on config limit
-        if len(self.conversation_history) > self.config.max_conversation_history * 2:
-            self.conversation_history = self.conversation_history[
-                -(self.config.max_conversation_history * 2):
+            # Keep recent converations based on config limit
+            if len(self.conversation_history) > self.config.max_conversation_history * 2:
+                self.conversation_history = self.conversation_history[
+                    -(self.config.max_conversation_history * 2):
+                ]
+                logger.debug(f"Trimmed conversation history to {len(self.conversation_history)} entries")
+
+            # Prepare messages for API request using the system prompt and coversation history
+            messages: List[Dict[str, str]] = [
+                {"role": "system", "content": self._create_prompt(limited_matches)},
+                *self.conversation_history
             ]
 
-        # Prepare messages for API
-        messages: List[Dict[str, str]] = [
-            {"role": "system", "content": self._create_prompt(limited_matches)},
-            *self.conversation_history
-        ]
+            try:
+                logger.debug("Sending request to OpenAI API")
+                response: ChatCompletion = self.client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=messages
+                )
+                answer: str = response.choices[0].message.content
+                logger.debug("Received response from OpenAI API")
 
-        try:
-            response: ChatCompletion = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=messages
-            )
-            answer: str = response.choices[0].message.content
+                # Log a truncated version of the answer to avoid excessive logging.
+                truncated_answer = answer[:100] + "..." if len(answer) > 100 else answer
+                logger.info(f"Generated answer: '{truncated_answer}'")
 
-            # Store assistant's response
-            self.conversation_history.append({
-                "role": "assistant",
-                "content": answer
-            })
+                self.conversation_history.append({"role": "assistant", "content": answer})
+                return answer
 
-            return answer
-        except Exception as e:
-            print(f"\nAPI Error Details:")
-            print(f"Error Type: {type(e).__name__}")
-            print(f"Error Message: {str(e)}")
-            print(f"Error Details: {e.__dict__}")
-            return []
+            except Exception as e:
+                error_msg = f"Error connecting to OpenAI API: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                raise APIConnectionError(error_msg)
 
-    def _retry_with_less_data(self, question: str, matches: List[Dict[str, Any]]) -> str:
-        """Retry answer generation with reduced match data.
+        except DataProcessingError as e:
+            # Log the error but let it propagate to the caller for handling
+            logger.error(f"Data processing error: {str(e)}", exc_info=True)
+            raise
+        except APIConnectionError as e:
+            # Log the error but let it propagate to the caller for handling
+            logger.error(f"API connection error: {str(e)}", exc_info=True)
+            raise
+
+    def _retry_with_less_data(self, question: str, matches: List[Match]) -> str:
+        """Retry answer generation with reduced match data when initial attempt fails.
 
         Args:
-            question (str): Original question
-            matches (list): Match data list
+            question (str): The user's question
+            matches (List[Match]): The original list of matches.
 
         Returns:
-            str: Generated answer or error message
+            str: The generated answer with reduced data.
+
+        Raises:
+            APIConnectionError: If there is an error connecting to the OpenAI API.
         """
         try:
-            reduced_matches: List[Dict[str, Any]] = self._limit_matches_by_size(
-                matches,
-                self.match_limit - 10
-            )
+            logger.info("Retrying with reduced match data")
+            reduced_limit = max(1, self.match_limit - 10)
+            logger.debug(f"Reduced match limit to {reduced_limit}")
+            reduced_matches: List[Match] = self._limit_matches_by_size(matches, reduced_limit)
+
             messages: List[Dict[str, str]] = [
                 {"role": "system", "content": self._create_prompt(reduced_matches)},
                 {"role": "user", "content": question}
             ]
 
+            logger.debug("Sending retry request to OpenAI API")
             response: ChatCompletion = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=messages
             )
-            return response.choices[0].message.content
-        except Exception as e:
-            return f"Failed to generate answer: {str(e)}"
+            answer = response.choices[0].message.content
+            logger.info("Successfully generated answer with reduced data")
+            return answer
 
-    def _limit_matches_by_size(self, matches: List[Dict[str, Any]], limit: Optional[int] = None) -> List[Dict[str, Any]]:
-        """Limit the number of matches to process.
+        except Exception as e:
+            error_msg = f"Failed to retry with reduced data: {str(e)}"
+            logger.error(error_msg, exc_info=True)
+            raise APIConnectionError(error_msg)
+
+    def _limit_matches_by_size(self, matches: List[Match], limit: Optional[int] = None) -> List[Match]:
+        """
+        Limit the number of matches in the list to avoid token limit issues.
 
         Args:
-            matches (List[Dict[str, Any]]): List of match dictionaries
-            limit (Optional[int]): Custom limit to use, defaults to self.match_limit if None
+            matches (List[Match]): The original list of matches.
+            limit (Optional[int]): Maximum number of matches to include.
+                                  If None, uses self.match_limit.
 
         Returns:
-            List[Dict[str, Any]]: Limited list of matches based on self.match_limit or provided limit
+            List[Match]: A limited subset of the original matches list.
         """
         limit_to_use: int = limit if limit is not None else self.match_limit
+        logger.debug(f"Limiting matches to {limit_to_use} (from {len(matches)} total)")
         return matches[:limit_to_use]
 
-    def _create_prompt(self, matches: List[Dict[str, Any]]) -> str:
-        """Create system prompt for the LLM.
+    def _create_prompt(self, matches: List[Match]) -> str:
+        """
+        Create system prompt for the language model based on match data.
 
         Args:
-            matches (List[Dict[str, Any]]): List of match dictionaries containing match information
+            matches (List[Match]): The matches to include in the prompt.
+
         Returns:
-            str: Formatted system prompt with match data
+            str: A formatted system prompt containing match data.
         """
         match_count: int = len(matches)
+        logger.debug(f"Creating prompt with {match_count} matches")
 
         prompt: str = f"""You are a friendly and knowledgeable yesterday's football match results assistant.
                      Your role is to provide clear, properly formatted, and detailed information about yesterday's football matches.
@@ -190,10 +214,14 @@ class QnAEngine:
 
                      Match Data:
         """
-        # Add match information
+        # Append match information using domain object attributes
         for match in matches:
-            prompt += f"""
-            {match['league']} ({match['country']}):
-            {match['home_team']} {match['home_score']} : {match['away_score']} {match['away_team']}
-            """
+            country = match.country if match.country else "Unknown country"
+            prompt += f"\n{match.league} ({country}):"
+            prompt += f"\n{match.home_team} {match.home_score} vs {match.away_score} {match.away_team}\n"
+            
+
+        # Log a truncated version of the prompt to avoid excessive logging
+        truncated_prompt = prompt[:200] + "..." if len(prompt) > 200 else prompt
+        logger.debug(f"Created promt: {truncated_prompt}")
         return prompt

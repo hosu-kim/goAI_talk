@@ -1,6 +1,3 @@
-# Environment variables and secrets
-.env
-
 # Python cache files
 __pycache__/
 *.pyc
@@ -14,3 +11,11 @@ __pycache__/
 # Database files
 *.db
 app/database_manager/*.db
+
+# Log files
+logs/
+*.logs
+
+# Environment variables
+.env
+.env.*
