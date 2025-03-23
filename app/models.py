@@ -22,7 +22,7 @@ Description:
 '''
 
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 from .domain.domain import GoalEvent, Match
 
 class GoalEventModel(BaseModel):

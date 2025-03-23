@@ -27,6 +27,7 @@ import requests
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Any
+
 from config import Settings
 from .domain.domain import Match
 from .models import RawAPIResponse
@@ -37,12 +38,14 @@ logger = logging.getLogger(__name__)
 
 class FootballAPI:
     """A client for interacting with the football data API.
-    
+
     This class provides methods to fetch and process football match data
     from an external API service.
     """
+    # Type hints for class variables
     use_test_data: bool
     config: Settings
+    # Type hind for instance variable
     headers: Dict[str, str]
 
     def __init__(self, config: Settings, use_test_data: bool = False) -> None:
@@ -52,13 +55,14 @@ class FootballAPI:
             config (Settings): configuration settings object.
             use_test_data (bool, optional): If True, use local test data instead of making API calls.
             Defaults to False.
+
         """
         self.config = config
         self.use_test_data = use_test_data
         self.headers =  {
             "x-apisports-key": self.config.api_football_key.get_secret_value()
         }
-        logger.info(f"FootballAPI initialized with use_test_date={use_test_data}")
+        logger.info(f"FootballAPI initialized with use_test_data={use_test_data}") # True / False
 
     def get_yesterdays_matches(self) -> List[Match]:
         """Retrieves football matches from yesterday.
@@ -69,9 +73,12 @@ class FootballAPI:
             List[Match]: A list of match objects containing match information.
 
         Raises:
-            APIConnectionError: If there's an error connecting to the API.
-            APIResponseError: If the API returns an unexpected response.
-            DataProcessingError: If there's an error processing the API data.
+            APIConnectionError: If there's an `error connecting` to the API.
+            APIResponseError: If the API returns an `unexpected response`.
+            DataProcessingError: If there's an `error processing` the API data.
+
+        Note:
+            data = response.json(): convert JSON response to dictionary
         """
         if self.use_test_data:
             logger.info("Using test data instead of API-Football api")
@@ -114,7 +121,6 @@ class FootballAPI:
             error_msg = f"Error processing match data: {str(e)}"
             logger.error(error_msg, exc_info=True)
             raise DataProcessingError(error_msg)
-    
 
     """=========================== TEST DATA LOAD ==========================="""
     def _load_test_data(self) -> List[Match]:
@@ -135,11 +141,11 @@ class FootballAPI:
             return matches
         except (FileNotFoundError, json.JSONDecodeError) as e:
             error_msg = f"Error loading test data: {str(e)}"
-            logger.error(error_msg, exc_info=True)
+            logger.error(error_msg, exc_info=True) # exc_info=True: Enables Traceback
             raise DataProcessingError(error_msg)
 
-    def _process_api_response(self, data: List[Dict[str, Any]]) -> List[Match]:
-        """"Process the API response using Pydantic models for validation.
+    def _process_api_response(self, data: Dict[str, Any]) -> List[Match]:
+        """Process the API response using Pydantic models for validation.
 
         Args:
             data (Dict[str, Any]): The raw API response data.
@@ -149,6 +155,7 @@ class FootballAPI:
 
         Raises:
             DataProcessingError: If the data does not match the expected structure.
+
         """
         try:
             logger.debug("Processing API response data")
@@ -157,10 +164,8 @@ class FootballAPI:
                 logger.error(error_msg)
                 raise APIResponseError(error_msg)
 
-            json_data = json.dumps(data)
-
             logger.debug("validating response format with Pydantic model")
-            validated_response = RawAPIResponse.model_validate_json(json_data)
+            validated_response = RawAPIResponse.model_validate(data) # models.py
 
             matches = [
                 raw_match.to_match_model().to_domain()

@@ -32,7 +32,6 @@ from app.domain.domain import Match, GoalEvent
 # Get a logger for this module
 logger = logging.getLogger(__name__)
 
-
 class Database:
     """A class to handle all database operations for football match data.
 

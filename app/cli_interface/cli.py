@@ -31,10 +31,9 @@ from rich.align import Align
 from rich.prompt import Prompt
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from typing import List, Set, Optional, Union
+from typing import List, Optional
 from app.database_manager.database import Database
 from datetime import datetime
-from config import settings, Settings
 from app.llm import QnAEngine
 from app.domain.domain import Match
 

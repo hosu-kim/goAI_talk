@@ -25,7 +25,6 @@ import os
 from datetime import datetime
 import logging
 import logging.handlers
-from typing import Optional
 
 def setup_logging(debug_mode=False, console_logs=True):
     """
