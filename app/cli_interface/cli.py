@@ -36,6 +36,9 @@ from app.database_manager.database import Database
 from datetime import datetime
 from app.llm import QnAEngine
 from app.domain.domain import Match
+import logging
+
+logger = logging.getLogger(__name__)
 
 class CLI:
     """Command Line Interface for the goAI Talk application.
@@ -63,14 +66,20 @@ class CLI:
         self.qna_engine = qna_engine
         self.current_date = datetime.today().strftime("%Y-%m-%d")
         self.match_data = None
+        logger.info("CLI interface initialized")
 
     def _load_match_data(self) -> None:
         """
         Load match data from database.
         """
         try:
+            logger.debug("Loading match data from database")
             self.match_data = self.db.retrieve_yesterdays_matches_from_db()
+            match_count = len(self.match_data) if self.match_data else 0
+            logger.info(f"Successfully loaded {match_count} matches")
         except Exception as e:
+            error_msg = f"Could not load match data: {str(e)}"
+            logger.error(error_msg, exc_info=True)
             self.console.print(f"[yellow]Warning: Could not load match data: {str(e)}[/yellow]")
 
     def display_welcome(self) -> None:
@@ -84,6 +93,7 @@ class CLI:
         header_panel = Panel(Align.center(header), border_style="blue", padding=(1, 2))
         self.console.print(header_panel)
         self.console.print()
+        logger.debug("Welcome message displayed")
 
     def display_question_guide(self) -> None:
         """
@@ -103,6 +113,7 @@ class CLI:
         self.console.print(
             Panel(guide_text, title="[bold blue]Question Guide[/bold blue]", border_style="cyan", padding=(1, 2))
         )
+        logger.debug("Qestion guide displayed")
 
     def display_data_context(self) -> None:
         """
@@ -124,6 +135,7 @@ class CLI:
         self.console.print(
             Panel(context, title="[bold blue]Available Data Context[/bold blue]", border_style="cyan", padding=(1 ,2))
         )
+        logger.debug(f"Data context displayed: {match_count} matches from {match_date}")
 
     def get_leagues_from_data(self) -> List[str]:
         """
@@ -133,6 +145,7 @@ class CLI:
             List[str]: A sorted list of league names.
         """
         if not self.match_data:
+            logger.warning("No match data available when getting leagues")
             return ["(Data not available)"]
         leagues = {f"{match.league} ({getattr(match, 'country', 'Unknown')})" for match in self.match_data if match.league}
         return sorted(list(leagues))
@@ -144,7 +157,9 @@ class CLI:
         Returns:
             str: The input question from the user.
         """
-        return Prompt.ask("\n[bold green]Question[/bold green]")
+        question = Prompt.ask("\n[bold green]Question[/bold green]")
+        logger.debug(f"User input: '{question}'")
+        return question
 
     def display_answer(self, answer: str) -> None:
         """
@@ -156,12 +171,15 @@ class CLI:
         self.console.print(
             Panel(Text(answer, style="bright_white"), title="[bold blue]Answer[/bold blue]", border_style="cyan", padding=(1, 2))
         )
+        truncated_answer = answer[:100] + "..." if len(answer) > 100 else answer
+        logger.debug(f"Displayed answer: '{truncated_answer}'")
 
     def run(self) -> None:
         """
         Entry-point method to run the CLI interface.
         This method calls several helper methods to perform its tasks.
         """
+        logger.info("Starting CLI interface run loop")
         self._load_match_data()
         self.display_welcome()
         self.display_question_guide()
@@ -176,21 +194,27 @@ class CLI:
         """
         question = self.process_user_input()
         if question.lower() in ['exit', 'quit']:
+            logger.info("User requested to exit the application")
             self.console.print(
                 Panel("[yellow]Thanks for using goAI Talk! See you next time![/yellow]", border_style="cyan", padding=(1, 2))
             )
             exit(0)
         elif question.lower() in ['help', '?', 'examples']:
+            logger.debug("User requested help")
             self.display_question_guide()
         elif question.lower() in ['info', 'data', 'context']:
+            logger.debug("User requested data context")
             self.display_data_context()
         else:
             try:
+                logger.info(f"Processing question: '{question}'")
                 with Progress(SpinnerColumn(), TextColumn("[bold blue]Thinking...[/bold blue]"), transient=True) as progress:
                     progress.add_task("generating", total=None)
                     answer = self.qna_engine.get_answer(question)
                 self.display_answer(answer)
             except Exception as e:
+                error_msg = f"Error processing question: {str(e)}"
+                logger.error(error_msg, exc_info=True)
                 self.console.print(
                     Panel(f"[bold red]Error:[/bold red] {str(e)}", border_style="red", padding=(1, 2))
                 )

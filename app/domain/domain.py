@@ -59,4 +59,4 @@ class Match:
     away_team: str
     home_score: Optional[int]
     away_score: Optional[int]
-    goals: List[GoalEvent]
+    goal_events: List[GoalEvent]

@@ -26,6 +26,16 @@ Description:
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import SecretStr
 
+"""
+BaseSettings:
+    1. Automatic loading of settings from environment variables
+    2. Support for .env files
+    3. Type validation and conversion
+SettingsConfigDict:
+    1. Environment file configuration
+    2. Case sensitivity settings.
+"""
+
 class Settings(BaseSettings):
     """Application configuration settings loaded from environment variables.
 

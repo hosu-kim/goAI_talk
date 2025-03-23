@@ -25,6 +25,15 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from .domain.domain import GoalEvent, Match
 
+"""
+BaseModel:
+    1. Data validation
+    2. Data parsing
+Field:
+    1. Metadata provision
+    2. Default factory conversion
+"""
+# ClassName(AnotherClass): Class inheritance
 class GoalEventModel(BaseModel):
     """Pydantic model for goal event validation.
 
@@ -45,9 +54,11 @@ class MatchModel(BaseModel):
     country: str
     home_team: str
     away_team: str
-    home_score: Optional[int] = None
-    away_score: Optional[int] = None
-    goals: Optional[List[GoalEventModel]] = Field(default_factory=list)
+    home_score: int
+    away_score: int
+    # Using default_factory=list ensures each match instance gets its own independent list,
+    # avoiding shared state between different matches
+    goal_events: Optional[List[GoalEventModel]] = Field(default_factory=list)
 
     def to_domain(self) -> Match:
         """Convert this pydantic model to a domain object.
@@ -68,12 +79,31 @@ class MatchModel(BaseModel):
             away_team=self.away_team,
             home_score=self.home_score,
             away_score=self.away_score,
-            goals=[GoalEvent(
+            goal_events=[GoalEvent(
                 team=goal.team,
                 player=goal.player,
                 minute=goal.minute
-            ) for goal in self.goals]
+            ) for goal in self.goal_events]
         )
+
+class RawFixtureModel(BaseModel):
+    """Model for fixture information in raw API response."""
+    id: int
+    date: str
+
+class RawLeagueModel(BaseModel):
+    """Model for league information in raw API response."""
+    name: str
+    country: str
+
+class RawTeamModel(BaseModel):
+    """Model for team information in raw API response."""
+    name: str
+
+class RawScoreModel(BaseModel):
+    """Model for goals information in raw API response."""
+    home: Optional[int]
+    away: Optional[int]
 
 class RawMatchEventModel(BaseModel):
     """Model for events in raw API response.
@@ -85,25 +115,6 @@ class RawMatchEventModel(BaseModel):
     player: Dict[str, Any]
     time: Dict[str, int]
 
-class RawTeamModel(BaseModel):
-    """Model for team information in raw API response."""
-    name: str
-
-class RawGoalsModel(BaseModel):
-    """Model for goals information in raw API response."""
-    home: Optional[int]
-    away: Optional[int]
-
-class RawLeagueModel(BaseModel):
-    """Model for league information in raw API response."""
-    name: str
-    country: str
-
-class RawFixtureModel(BaseModel):
-    """Model for fixture information in raw API response."""
-    id: int
-    date: str
-
 class RawMatchModel(BaseModel):
     """Model for the entire match entry in the raw API response.
 
@@ -112,8 +123,8 @@ class RawMatchModel(BaseModel):
     fixture: RawFixtureModel
     league: RawLeagueModel
     teams: Dict[str, RawTeamModel]
-    goals: RawGoalsModel
-    events: Optional[List[RawMatchEventModel]] = None
+    goals: RawScoreModel
+    events: Optional[List[RawMatchEventModel]] = Field(default_factory=list)
 
     def to_match_model(self) -> MatchModel:
         """Convert this raw API model to a more structured MatchModel.
@@ -121,16 +132,15 @@ class RawMatchModel(BaseModel):
         Returns:
             MatchModel: A structured representation of the match data.
         """
-        goals = []
-        if self.events:
-            for event in self.events:
-                if event.type == 'Goal':
-                    goals.append(GoalEventModel(
-                        team=event.team.name,
-                        player=event.player.name,
-                        minute=event.time.elapsed
-                    ))
-                    
+        goal_events = []
+        for event in self.events:
+            if event.type == 'Goal':
+                goal_events.append(GoalEventModel(
+                    team=event.team.name,
+                    player=event.player.name,
+                    minute=event.time.elapsed
+                ))
+
         return MatchModel(
             match_id=self.fixture.id,
             date=self.fixture.date,
@@ -140,7 +150,7 @@ class RawMatchModel(BaseModel):
             away_team=self.teams['away'].name,
             home_score=self.goals.home,
             away_score=self.goals.away,
-            goals=goals
+            goal_events=goal_events
         )
 
 class RawAPIResponse(BaseModel):

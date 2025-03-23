@@ -38,7 +38,7 @@ def setup_logging(debug_mode=False, console_logs=True):
     log_dir = "logs"
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-        
+
     # Set log file name with current date
     log_filename = os.path.join(log_dir, f"goal_talk{datetime.now().strftime('%Y%m%d')}.log")
 
@@ -46,7 +46,15 @@ def setup_logging(debug_mode=False, console_logs=True):
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG if debug_mode else logging.INFO)
 
-    # Remove existing handlers to prevent deplicate logging
+# Uses slice notation [:] to create a copy of the handlers list for safe iteration
+# This prevents index shifting issues when removing handlers during iteration
+#
+# Example problem without slice notation:
+# handlers = ["h1", "h2", "h3"]
+# for h in handlers: handlers.remove(h)
+#   Iteration 1: h = "h1" -> remove "h1" -> handlers = ["h2", "h3"]
+#   Iteration 2: h = "h3" -> remove "h3" -> handlers = ["h2"]
+#   Iteration ends with ["h2"] still in the list! "h2" is never processed.
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
 

@@ -19,7 +19,7 @@ Author: Hosu Kim
 Created: 2025-03-21 12:06:03 UTC
 
 Description:
-    This module defines custom exceptions for the football API client.
+    This module defines `custom exceptions` for the football API client.
 '''
 
 class FootballAPIError(Exception):

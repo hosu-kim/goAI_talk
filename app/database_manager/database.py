@@ -36,8 +36,8 @@ class Database:
     """A class to handle all database operations for football match data.
 
     This class provides methods to create tables, save match data and retrieve
-    match information from a SQLite database. It supports both production and
-    test environments.
+    match information from a SQLite database.
+    It supports both production and test environments.
 
     Attributes:
         db_path (str): Path to the SQLite database file.
@@ -122,7 +122,7 @@ class Database:
                 "away_team": match.away_team,
                 "home_score": match.home_score,
                 "away_score": match.away_score,
-                "goals": json.dumps([goal.__dict__ for goal in match.goals])
+                "goals": json.dumps([goal.__dict__ for goal in match.goal_events])
             }
 
             logger.debug(f"Saving match {match.match_id}: {match.home_team} vs {match.away_team}")
@@ -199,7 +199,7 @@ class Database:
                     away_team=row_dict['away_team'],
                     home_score=row_dict['home_score'],
                     away_score=row_dict['away_score'],
-                    goals=goal_events
+                    goal_events=goal_events
                 )
 
                 matches.append(match)
